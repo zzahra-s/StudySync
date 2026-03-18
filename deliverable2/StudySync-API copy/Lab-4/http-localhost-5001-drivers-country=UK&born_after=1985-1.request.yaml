@@ -1,0 +1,8 @@
+$kind: http-request
+name: http://localhost:5001/drivers?country=UK&born_after=1985
+url: http://localhost:5001/upgrades?type=Engine&min_boost=30
+method: GET
+queryParams:
+  type: Engine
+  min_boost: "30"
+order: 337367354310655

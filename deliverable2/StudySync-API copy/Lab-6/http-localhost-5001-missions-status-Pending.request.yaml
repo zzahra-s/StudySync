@@ -1,0 +1,7 @@
+$kind: http-request
+name: http://localhost:5001/missions/status/Pending
+url: http://localhost:5001/missions/status/Pending
+method: GET
+body:
+  type: json
+  content: ""
