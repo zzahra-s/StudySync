@@ -1,0 +1,5 @@
+$kind: http-request
+name: http://localhost:5001/missions/3
+url: http://localhost:5001/missions/3
+method: GET
+order: 692987893907455
