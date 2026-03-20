@@ -1,5 +1,0 @@
-$kind: http-request
-name: http://localhost:5001/fights
-url: http://localhost:5001/fights
-method: GET
-order: 1910080743145471
