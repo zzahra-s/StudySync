@@ -1,0 +1,223 @@
+{
+  "info": {
+    "name": "StudySync_Member3",
+    "description": "Member 3 API — set collection variables: baseUrl (http://localhost:5001), courseId, studentId, deadlineId, materialId, bookId. Run Login first to save token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5001" },
+    { "key": "token", "value": "" },
+    { "key": "courseId", "value": "4" },
+    { "key": "studentId", "value": "1" },
+    { "key": "deadlineId", "value": "1" },
+    { "key": "materialId", "value": "1" },
+    { "key": "bookId", "value": "1" }
+  ],
+  "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+  "item": [
+    {
+      "name": "01 - Public",
+      "auth": { "type": "noauth" },
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Auth (POST only — not GET)",
+      "auth": { "type": "noauth" },
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Test Student\",\n  \"roll_number\": \"L99-9999\",\n  \"email\": \"newuser_unique@example.com\",\n  \"password\": \"testpass123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "Use a NEW email each time (unique in DB)."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  var j = pm.response.json();",
+                  "  if (j.token) { pm.collectionVariables.set('token', j.token); }",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"l242512@gmail.com\",\n  \"password\": \"abcd\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Change email/password to match your DB. Token auto-saves to {{token}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Deadlines & planner",
+      "item": [
+        {
+          "name": "GET Course Deadlines",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/courses/{{courseId}}/deadlines" }
+        },
+        {
+          "name": "GET Student Deadlines (all)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}/deadlines" }
+        },
+        {
+          "name": "GET Pending Deadlines",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}/deadlines?status=Pending" }
+        },
+        {
+          "name": "GET Upcoming Deadlines",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}/deadlines?upcoming=true" }
+        },
+        {
+          "name": "GET Overdue Deadlines",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}/deadlines?overdue=true" }
+        },
+        {
+          "name": "POST Create Deadline",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"course_id\": 4,\n  \"title\": \"Postman test task\",\n  \"due_date\": \"2026-12-01T18:00:00\",\n  \"priority\": \"Medium\",\n  \"allocated_study_hours\": 2\n}"
+            },
+            "url": "{{baseUrl}}/api/deadlines"
+          }
+        },
+        {
+          "name": "PUT Update Deadline",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated title\",\n  \"priority\": \"High\"\n}"
+            },
+            "url": "{{baseUrl}}/api/deadlines/{{deadlineId}}"
+          }
+        },
+        {
+          "name": "DELETE Deadline",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/deadlines/{{deadlineId}}" }
+        },
+        {
+          "name": "GET Study Planner",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}/study-planner" }
+        },
+        {
+          "name": "GET Study Hours per course",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}/study-hours" }
+        },
+        {
+          "name": "GET Top 3 courses by study hours",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}/top-courses" }
+        }
+      ]
+    },
+    {
+      "name": "04 - Materials",
+      "item": [
+        {
+          "name": "GET Course Materials",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/courses/{{courseId}}/materials" }
+        },
+        {
+          "name": "POST Create Material",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"course_id\": 4,\n  \"material_name\": \"Sample PDF\",\n  \"file_path\": \"/uploads/sample.pdf\"\n}"
+            },
+            "url": "{{baseUrl}}/api/materials"
+          }
+        },
+        {
+          "name": "DELETE Material",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/materials/{{materialId}}" }
+        },
+        {
+          "name": "GET Materials count per course",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/materials/count-per-course" }
+        }
+      ]
+    },
+    {
+      "name": "05 - Books",
+      "item": [
+        {
+          "name": "GET Course Books",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/courses/{{courseId}}/books" }
+        },
+        {
+          "name": "POST Create Book",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"course_id\": 3,\n  \"title\": \"Test Book\",\n  \"author\": \"Author Name\",\n  \"isbn\": \"978-0000000000\"\n}"
+            },
+            "url": "{{baseUrl}}/api/books"
+          }
+        },
+        {
+          "name": "PUT Update Book",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Book Title\"\n}"
+            },
+            "url": "{{baseUrl}}/api/books/{{bookId}}"
+          }
+        },
+        {
+          "name": "DELETE Book",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/books/{{bookId}}" }
+        },
+        {
+          "name": "GET Search Books",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/books/search?q=database" }
+        }
+      ]
+    },
+    {
+      "name": "06 - Task progress",
+      "item": [
+        {
+          "name": "GET Task Progress",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}/task-progress" }
+        }
+      ]
+    }
+  ]
+}
