@@ -1,4 +1,6 @@
 const deadlineModel = require('../models/DeadlineModel');
+const taskProgressModel = require('../models/TaskProgressModel');
+const { authenticateToken } = require('../middleware/auth');
 
 const getDeadlinesByCourse = async (req, res) => {
   try {
@@ -81,10 +83,26 @@ const deleteDeadline = async (req, res) => {
   }
 };
 
+const getStudyPlanner = async (req, res) => {
+  try {
+    const studentId = parseInt(req.params.studentId);
+    if (isNaN(studentId)) {
+      return res.status(400).json({ success: false, error: 'Invalid student ID' });
+    }
+    const planner = await taskProgressModel.getStudyPlanner(studentId);
+    res.json({ success: true, data: planner });
+  } catch (error) {
+    console.error('getStudyPlanner error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch study planner' });
+  }
+};
+
 module.exports = {
   getDeadlinesByCourse,
   getDeadlinesByStudent,
   createDeadline,
   updateDeadline,
-  deleteDeadline
+  deleteDeadline,
+  getStudyPlanner
 };
+
