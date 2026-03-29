@@ -1,39 +1,49 @@
 const express = require('express');
-const { body, query } = require('express-validator');
-const { authenticateToken } = require('../middleware/auth');
 const bookController = require('../controllers/bookController');
+const { authenticateToken } = require('../middleware/auth');
+const {
+  validateRequest,
+  validateCourseIdParam,
+  validateBookIdParam,
+  validateBook,
+  validateBookUpdate,
+  validateSearch,
+} = require('../middleware/validation');
 
 const router = express.Router();
 
-// GET /api/courses/:courseId/books
-router.get('/courses/:courseId/books', authenticateToken, bookController.getBooksByCourse);
-
-// POST /api/books
-router.post('/books', [
+router.get(
+  '/courses/:courseId/books',
   authenticateToken,
-  body('course_id').isInt().withMessage('Valid course ID required'),
-  body('title').trim().notEmpty().escape().withMessage('Title required'),
-  body('author').optional().trim().escape(),
-  body('isbn').optional().isLength({ min: 10, max: 20 }).withMessage('Invalid ISBN')
-], bookController.createBook);
+  validateCourseIdParam,
+  validateRequest,
+  bookController.getBooksByCourse
+);
 
-// PUT /api/books/:id
-router.put('/books/:id', [
+router.get(
+  '/books/search',
   authenticateToken,
-  body('id').isInt().withMessage('Valid book ID required')
-], bookController.updateBook);
+  validateSearch,
+  validateRequest,
+  bookController.searchBooks
+);
 
-// DELETE /api/books/:id
-router.delete('/books/:id', [
-  authenticateToken,
-  body('id').isInt().withMessage('Valid book ID required')
-], bookController.deleteBook);
+router.post('/books', authenticateToken, validateBook, validateRequest, bookController.createBook);
 
-// GET /api/books/search?q=keyword
-router.get('/books/search', [
+router.put(
+  '/books/:id',
   authenticateToken,
-  query('q').trim().notEmpty().withMessage('Search keyword required')
-], bookController.searchBooks);
+  validateBookUpdate,
+  validateRequest,
+  bookController.updateBook
+);
+
+router.delete(
+  '/books/:id',
+  authenticateToken,
+  validateBookIdParam,
+  validateRequest,
+  bookController.deleteBook
+);
 
 module.exports = router;
-

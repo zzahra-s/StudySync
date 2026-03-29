@@ -1,29 +1,43 @@
 const express = require('express');
-const { body } = require('express-validator');
-const { authenticateToken } = require('../middleware/auth');
 const materialController = require('../controllers/materialController');
+const { authenticateToken } = require('../middleware/auth');
+const {
+  validateRequest,
+  validateCourseIdParam,
+  validateMaterialIdParam,
+  validateMaterial,
+} = require('../middleware/validation');
 
-const router = express.Router({ mergeParams: true });
+const router = express.Router();
 
-// GET /api/courses/:courseId/materials
-router.get('/courses/:courseId/materials', authenticateToken, materialController.getMaterialsByCourse);
-
-// POST /api/materials
-router.post('/materials', [
+router.get(
+  '/courses/:courseId/materials',
   authenticateToken,
-  body('course_id').isInt().withMessage('Valid course ID required'),
-  body('material_name').trim().notEmpty().escape().withMessage('Material name required'),
-  body('file_path').optional().trim().escape()
-], materialController.createMaterial);
+  validateCourseIdParam,
+  validateRequest,
+  materialController.getMaterialsByCourse
+);
 
-// DELETE /api/materials/:id
-router.delete('/materials/:id', [
+router.get(
+  '/materials/count-per-course',
   authenticateToken,
-  body('id').isInt().withMessage('Valid material ID required')
-], materialController.deleteMaterial);
+  materialController.getMaterialCountPerCourse
+);
 
-// GET /api/materials/count-per-course (optional)
-router.get('/materials/count-per-course', authenticateToken, materialController.getMaterialCountPerCourse);
+router.post(
+  '/materials',
+  authenticateToken,
+  validateMaterial,
+  validateRequest,
+  materialController.createMaterial
+);
+
+router.delete(
+  '/materials/:id',
+  authenticateToken,
+  validateMaterialIdParam,
+  validateRequest,
+  materialController.deleteMaterial
+);
 
 module.exports = router;
-
