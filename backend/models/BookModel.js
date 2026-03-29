@@ -1,119 +1,123 @@
-const { poolPromise } = require('../config/Database');
+const { sql, poolPromise } = require('../config/Database');
 
-/**
- * Get books by course
- */
 const getBooksByCourse = async (courseId) => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('courseId', poolPromise.sql.Int, courseId)
-    .query(`
-      SELECT book_id, course_id, title, author, isbn
-      FROM Books
-      WHERE course_id = @courseId
-      ORDER BY title ASC
+  const result = await pool.request().input('courseId', sql.Int, courseId).query(`
+      SELECT
+        b.book_id,
+        b.course_id,
+        b.title,
+        b.author,
+        b.isbn
+      FROM Books b
+      WHERE b.course_id = @courseId
+      ORDER BY b.title ASC;
     `);
+
   return result.recordset;
 };
 
-/**
- * Get single book
- */
-const getBookById = async (bookId) => {
+const createBook = async (bookData) => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('bookId', poolPromise.sql.Int, bookId)
-    .query(`
-      SELECT book_id, course_id, title, author, isbn
-      FROM Books
-      WHERE book_id = @bookId
-    `);
-  return result.recordset[0] || null;
-};
-
-/**
- * Create book
- */
-const createBook = async ({ courseId, title, author, isbn }) => {
-  const pool = await poolPromise;
-  const result = await pool.request()
-    .input('courseId', poolPromise.sql.Int, courseId)
-    .input('title', poolPromise.sql.NVarChar(255), title)
-    .input('author', poolPromise.sql.NVarChar(200), author)
-    .input('isbn', poolPromise.sql.NVarChar(20), isbn)
+  const result = await pool
+    .request()
+    .input('course_id', sql.Int, bookData.course_id)
+    .input('title', sql.VarChar(255), bookData.title)
+    .input('author', sql.VarChar(200), bookData.author || null)
+    .input('isbn', sql.VarChar(20), bookData.isbn || null)
     .query(`
       INSERT INTO Books (course_id, title, author, isbn)
-      OUTPUT INSERTED.*
-      VALUES (@courseId, @title, @author, @isbn)
+      OUTPUT
+        INSERTED.book_id,
+        INSERTED.course_id,
+        INSERTED.title,
+        INSERTED.author,
+        INSERTED.isbn
+      VALUES (@course_id, @title, @author, @isbn);
     `);
+
   return result.recordset[0];
 };
 
-/**
- * Update book
- */
-const updateBook = async (bookId, { title, author, isbn }) => {
+const updateBook = async (bookId, updates) => {
   const pool = await poolPromise;
-  let query = 'UPDATE Books SET ';
-  const params = [];
-  
-  if (title !== undefined) {
-    query += 'title = @title, ';
-    params.push({ name: 'title', type: poolPromise.sql.NVarChar(255), value: title });
+  const request = pool.request().input('book_id', sql.Int, bookId);
+  const assignments = [];
+
+  if (updates.title !== undefined) {
+    assignments.push('title = @title');
+    request.input('title', sql.VarChar(255), updates.title);
   }
-  if (author !== undefined) {
-    query += 'author = @author, ';
-    params.push({ name: 'author', type: poolPromise.sql.NVarChar(200), value: author });
+
+  if (updates.author !== undefined) {
+    assignments.push('author = @author');
+    request.input('author', sql.VarChar(200), updates.author);
   }
-  if (isbn !== undefined) {
-    query += 'isbn = @isbn, ';
-    params.push({ name: 'isbn', type: poolPromise.sql.NVarChar(20), value: isbn });
+
+  if (updates.isbn !== undefined) {
+    assignments.push('isbn = @isbn');
+    request.input('isbn', sql.VarChar(20), updates.isbn);
   }
-  
-  if (params.length === 0) return { rowsAffected: 0 };
-  
-  query = query.slice(0, -2) + ' WHERE book_id = @bookId';
-  params.push({ name: 'bookId', type: poolPromise.sql.Int, value: bookId });
-  
-  const request = pool.request();
-  params.forEach(p => request.input(p.name, p.type, p.value));
-  const result = await request.query(query);
-  return result;
+
+  if (updates.course_id !== undefined) {
+    assignments.push('course_id = @course_id');
+    request.input('course_id', sql.Int, updates.course_id);
+  }
+
+  if (assignments.length === 0) {
+    return null;
+  }
+
+  const result = await request.query(`
+      UPDATE Books
+      SET ${assignments.join(', ')}
+      OUTPUT
+        INSERTED.book_id,
+        INSERTED.course_id,
+        INSERTED.title,
+        INSERTED.author,
+        INSERTED.isbn
+      WHERE book_id = @book_id;
+    `);
+
+  return result.recordset[0] || null;
 };
 
-/**
- * Delete book
- */
 const deleteBook = async (bookId) => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('bookId', poolPromise.sql.Int, bookId)
-    .query('DELETE FROM Books WHERE book_id = @bookId');
-  return result;
+  const result = await pool.request().input('bookId', sql.Int, bookId).query(`
+      DELETE FROM Books
+      WHERE book_id = @bookId;
+    `);
+
+  return result.rowsAffected[0] > 0;
 };
 
-/**
- * Search books
- */
 const searchBooks = async (keyword) => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('keyword', poolPromise.sql.NVarChar, `%${keyword.toLowerCase()}%`)
-    .query(`
-      SELECT book_id, course_id, title, author, isbn
-      FROM Books
-      WHERE LOWER(title) LIKE @keyword OR LOWER(author) LIKE @keyword
-      ORDER BY title ASC
+  const result = await pool.request().input('keyword', sql.VarChar(100), `%${keyword}%`).query(`
+      SELECT
+        b.book_id,
+        b.course_id,
+        b.title,
+        b.author,
+        b.isbn,
+        c.course_code,
+        c.course_name
+      FROM Books b
+      INNER JOIN Courses c ON b.course_id = c.course_id
+      WHERE LOWER(b.title) LIKE LOWER(@keyword)
+         OR LOWER(ISNULL(b.author, '')) LIKE LOWER(@keyword)
+      ORDER BY b.title ASC;
     `);
+
   return result.recordset;
 };
 
 module.exports = {
   getBooksByCourse,
-  getBookById,
   createBook,
   updateBook,
   deleteBook,
-  searchBooks
+  searchBooks,
 };
-
