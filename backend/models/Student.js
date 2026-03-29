@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require('../config/database');
+const { sql, poolPromise } = require('../config/Database');  // FIXED: Database.js
 
 class Student {
     static async create(studentData) {
@@ -53,3 +53,4 @@ class Student {
 }
 
 module.exports = Student;
+
