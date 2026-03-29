@@ -26,8 +26,7 @@ const getCGPA = async (req, res) => {
 
         res.json(data);
     } catch (error) {
-        console.error('Get CGPA error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, error: 'Server error' });
     }
 };
 
@@ -51,8 +50,7 @@ const getSemesterGPA = async (req, res) => {
 
         res.json({ semesters: data });
     } catch (error) {
-        console.error('Get semester GPA error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, error: 'Server error' });
     }
 };
 
@@ -62,8 +60,7 @@ const getAverageGPA = async (req, res) => {
         const data = await GPA.getOverallAverageCGPA();
         res.json(data);
     } catch (error) {
-        console.error('Get average GPA error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, error: 'Server error' });
     }
 };
 

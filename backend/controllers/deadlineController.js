@@ -1,99 +1,130 @@
 const deadlineModel = require('../models/DeadlineModel');
-const taskProgressModel = require('../models/TaskProgressModel');
-const { authenticateToken } = require('../middleware/auth');
+
+const handleServerError = (res, error, action) => {
+  console.error(`Deadline controller failed while trying to ${action}:`, error);
+  return res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+  });
+};
 
 const getDeadlinesByCourse = async (req, res) => {
   try {
-    const courseId = Number(req.params.courseId);
-    const deadlines = await deadlineModel.getDeadlinesByCourse(courseId);
-    return res.json({ success: true, data: deadlines });
+    const deadlines = await deadlineModel.getDeadlinesByCourse(req.params.courseId);
+    return res.json({
+      success: true,
+      data: deadlines,
+    });
   } catch (error) {
-    console.error('getDeadlinesByCourse error:', error);
-    return res.status(500).json({ success: false, error: 'Failed to fetch deadlines by course' });
+    return handleServerError(res, error, 'fetch deadlines by course');
   }
 };
 
 const getDeadlinesByStudent = async (req, res) => {
   try {
-    const studentId = Number(req.params.studentId);
-    const filters = {
+    const deadlines = await deadlineModel.getDeadlinesByStudent(req.params.studentId, {
       status: req.query.status,
       priority: req.query.priority,
-      upcoming: req.query.upcoming === 'true',
-      overdue: req.query.overdue === 'true'
-    };
-    const deadlines = await deadlineModel.getDeadlinesByStudent(studentId, filters);
-    return res.json({ success: true, data: deadlines });
+      upcoming: req.query.upcoming,
+      overdue: req.query.overdue,
+    });
+
+    return res.json({
+      success: true,
+      data: deadlines,
+    });
   } catch (error) {
-    console.error('getDeadlinesByStudent error:', error);
-    return res.status(500).json({ success: false, error: 'Failed to fetch deadlines by student' });
+    return handleServerError(res, error, 'fetch deadlines by student');
   }
 };
 
 const createDeadline = async (req, res) => {
   try {
-    const { course_id, title, due_date, status, priority, allocated_study_hours } = req.body;
-    const newDeadline = await deadlineModel.createDeadline({
-      courseId: Number(course_id),
-      title,
-      dueDate: due_date,
-      status,
-      priority,
-      allocatedStudyHours: allocated_study_hours !== undefined ? parseFloat(allocated_study_hours) : 0
+    const deadline = await deadlineModel.createDeadline(req.body);
+    return res.status(201).json({
+      success: true,
+      data: deadline,
     });
-    return res.status(201).json({ success: true, data: newDeadline });
   } catch (error) {
-    console.error('createDeadline error:', error);
-    return res.status(500).json({ success: false, error: 'Failed to create deadline' });
+    return handleServerError(res, error, 'create a deadline');
   }
 };
 
 const updateDeadline = async (req, res) => {
   try {
-    const deadlineId = Number(req.params.id);
-    const { title, due_date, status, priority, allocated_study_hours } = req.body;
-    const result = await deadlineModel.updateDeadline(deadlineId, {
-      title,
-      dueDate: due_date,
-      status,
-      priority,
-      allocatedStudyHours: allocated_study_hours !== undefined ? parseFloat(allocated_study_hours) : undefined
-    });
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: 'Deadline not found or no change' });
+    const updatedDeadline = await deadlineModel.updateDeadline(req.params.id, req.body);
+
+    if (!updatedDeadline) {
+      return res.status(404).json({
+        success: false,
+        error: 'Deadline not found',
+      });
     }
-    return res.json({ success: true, data: 'Deadline updated successfully' });
+
+    return res.json({
+      success: true,
+      data: updatedDeadline,
+    });
   } catch (error) {
-    console.error('updateDeadline error:', error);
-    return res.status(500).json({ success: false, error: 'Failed to update deadline' });
+    return handleServerError(res, error, 'update a deadline');
   }
 };
 
 const deleteDeadline = async (req, res) => {
   try {
-    const deadlineId = Number(req.params.id);
-    const result = await deadlineModel.deleteDeadline(deadlineId);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: 'Deadline not found' });
+    const deleted = await deadlineModel.deleteDeadline(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Deadline not found',
+      });
     }
-    return res.json({ success: true, data: 'Deadline deleted successfully' });
+
+    return res.json({
+      success: true,
+      data: {
+        message: 'Deadline deleted successfully',
+      },
+    });
   } catch (error) {
-    console.error('deleteDeadline error:', error);
-    return res.status(500).json({ success: false, error: 'Failed to delete deadline' });
+    return handleServerError(res, error, 'delete a deadline');
   }
 };
 
 const getStudyPlanner = async (req, res) => {
   try {
-    const studentId = parseInt(req.params.studentId);
-    if (isNaN(studentId)) {
-      return res.status(400).json({ success: false, error: 'Invalid student ID' });
-    }
-    const planner = await taskProgressModel.getStudyPlanner(studentId);
-    res.json({ success: true, data: planner });
+    const planner = await deadlineModel.getStudyPlanner(req.params.studentId);
+    return res.json({
+      success: true,
+      data: planner,
+    });
   } catch (error) {
-    console.error('getStudyPlanner error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch study planner' });
+    return handleServerError(res, error, 'fetch the study planner');
+  }
+};
+
+const getStudyHoursByCourse = async (req, res) => {
+  try {
+    const studyHours = await deadlineModel.getStudyHoursPerCourse(req.params.studentId);
+    return res.json({
+      success: true,
+      data: studyHours,
+    });
+  } catch (error) {
+    return handleServerError(res, error, 'fetch study hours');
+  }
+};
+
+const getTopCoursesByStudyHours = async (req, res) => {
+  try {
+    const topCourses = await deadlineModel.getTopCoursesByStudyHours(req.params.studentId);
+    return res.json({
+      success: true,
+      data: topCourses,
+    });
+  } catch (error) {
+    return handleServerError(res, error, 'fetch top courses by study hours');
   }
 };
 
@@ -103,6 +134,7 @@ module.exports = {
   createDeadline,
   updateDeadline,
   deleteDeadline,
-  getStudyPlanner
+  getStudyPlanner,
+  getStudyHoursByCourse,
+  getTopCoursesByStudyHours,
 };
-

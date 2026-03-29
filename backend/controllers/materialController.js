@@ -1,66 +1,68 @@
 const courseMaterialModel = require('../models/CourseMaterialModel');
 
+const handleServerError = (res, error, action) => {
+  console.error(`Material controller failed while trying to ${action}:`, error);
+  return res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+  });
+};
+
 const getMaterialsByCourse = async (req, res) => {
   try {
-    const courseId = parseInt(req.params.courseId);
-    if (isNaN(courseId)) {
-      return res.status(400).json({ success: false, error: 'Invalid course ID' });
-    }
-    const materials = await courseMaterialModel.getMaterialsByCourse(courseId);
-    res.json({ success: true, data: materials });
+    const materials = await courseMaterialModel.getMaterialsByCourse(req.params.courseId);
+    return res.json({
+      success: true,
+      data: materials,
+    });
   } catch (error) {
-    console.error('getMaterialsByCourse error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch materials' });
+    return handleServerError(res, error, 'fetch materials by course');
   }
 };
 
 const createMaterial = async (req, res) => {
   try {
-    const { course_id, material_name, file_path } = req.body;
-    
-    if (!course_id || !material_name) {
-      return res.status(400).json({ success: false, error: 'course_id and material_name required' });
-    }
-
-    const newMaterial = await courseMaterialModel.createMaterial({
-      courseId: parseInt(course_id),
-      materialName: material_name,
-      filePath: file_path || ''
+    const material = await courseMaterialModel.createMaterial(req.body);
+    return res.status(201).json({
+      success: true,
+      data: material,
     });
-    
-    res.status(201).json({ success: true, data: newMaterial });
   } catch (error) {
-    console.error('createMaterial error:', error);
-    res.status(500).json({ success: false, error: 'Failed to create material' });
+    return handleServerError(res, error, 'create a material');
   }
 };
 
 const deleteMaterial = async (req, res) => {
   try {
-    const materialId = parseInt(req.params.id);
-    if (isNaN(materialId)) {
-      return res.status(400).json({ success: false, error: 'Invalid material ID' });
+    const deleted = await courseMaterialModel.deleteMaterial(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Material not found',
+      });
     }
-    
-    const result = await courseMaterialModel.deleteMaterial(materialId);
-    if (result.rowsAffected === 0) {
-      return res.status(404).json({ success: false, error: 'Material not found' });
-    }
-    
-    res.json({ success: true, data: 'Material deleted successfully' });
+
+    return res.json({
+      success: true,
+      data: {
+        message: 'Material deleted successfully',
+      },
+    });
   } catch (error) {
-    console.error('deleteMaterial error:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete material' });
+    return handleServerError(res, error, 'delete a material');
   }
 };
 
 const getMaterialCountPerCourse = async (req, res) => {
   try {
-    const counts = await courseMaterialModel.getMaterialCountPerCourse();
-    res.json({ success: true, data: counts });
+    const counts = await courseMaterialModel.countMaterialsPerCourse();
+    return res.json({
+      success: true,
+      data: counts,
+    });
   } catch (error) {
-    console.error('getMaterialCountPerCourse error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch material counts' });
+    return handleServerError(res, error, 'count materials per course');
   }
 };
 
@@ -68,6 +70,5 @@ module.exports = {
   getMaterialsByCourse,
   createMaterial,
   deleteMaterial,
-  getMaterialCountPerCourse
+  getMaterialCountPerCourse,
 };
-

@@ -1,93 +1,88 @@
 const bookModel = require('../models/BookModel');
 
+const handleServerError = (res, error, action) => {
+  console.error(`Book controller failed while trying to ${action}:`, error);
+  return res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+  });
+};
+
 const getBooksByCourse = async (req, res) => {
   try {
-    const courseId = parseInt(req.params.courseId);
-    if (isNaN(courseId)) {
-      return res.status(400).json({ success: false, error: 'Invalid course ID' });
-    }
-    const books = await bookModel.getBooksByCourse(courseId);
-    res.json({ success: true, data: books });
+    const books = await bookModel.getBooksByCourse(req.params.courseId);
+    return res.json({
+      success: true,
+      data: books,
+    });
   } catch (error) {
-    console.error('getBooksByCourse error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch books' });
+    return handleServerError(res, error, 'fetch books by course');
   }
 };
 
 const createBook = async (req, res) => {
   try {
-    const { course_id, title, author, isbn } = req.body;
-    
-    if (!course_id || !title) {
-      return res.status(400).json({ success: false, error: 'course_id and title required' });
-    }
-
-    const newBook = await bookModel.createBook({
-      courseId: parseInt(course_id),
-      title,
-      author: author || null,
-      isbn: isbn || null
+    const book = await bookModel.createBook(req.body);
+    return res.status(201).json({
+      success: true,
+      data: book,
     });
-    
-    res.status(201).json({ success: true, data: newBook });
   } catch (error) {
-    console.error('createBook error:', error);
-    res.status(500).json({ success: false, error: 'Failed to create book' });
+    return handleServerError(res, error, 'create a book');
   }
 };
 
 const updateBook = async (req, res) => {
   try {
-    const bookId = parseInt(req.params.id);
-    if (isNaN(bookId)) {
-      return res.status(400).json({ success: false, error: 'Invalid book ID' });
+    const updatedBook = await bookModel.updateBook(req.params.id, req.body);
+
+    if (!updatedBook) {
+      return res.status(404).json({
+        success: false,
+        error: 'Book not found',
+      });
     }
-    
-    const { title, author, isbn } = req.body;
-    const result = await bookModel.updateBook(bookId, { title, author, isbn });
-    
-    if (result.rowsAffected === 0) {
-      return res.status(404).json({ success: false, error: 'Book not found or no changes' });
-    }
-    
-    res.json({ success: true, data: 'Book updated successfully' });
+
+    return res.json({
+      success: true,
+      data: updatedBook,
+    });
   } catch (error) {
-    console.error('updateBook error:', error);
-    res.status(500).json({ success: false, error: 'Failed to update book' });
+    return handleServerError(res, error, 'update a book');
   }
 };
 
 const deleteBook = async (req, res) => {
   try {
-    const bookId = parseInt(req.params.id);
-    if (isNaN(bookId)) {
-      return res.status(400).json({ success: false, error: 'Invalid book ID' });
+    const deleted = await bookModel.deleteBook(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Book not found',
+      });
     }
-    
-    const result = await bookModel.deleteBook(bookId);
-    if (result.rowsAffected === 0) {
-      return res.status(404).json({ success: false, error: 'Book not found' });
-    }
-    
-    res.json({ success: true, data: 'Book deleted successfully' });
+
+    return res.json({
+      success: true,
+      data: {
+        message: 'Book deleted successfully',
+      },
+    });
   } catch (error) {
-    console.error('deleteBook error:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete book' });
+    return handleServerError(res, error, 'delete a book');
   }
 };
 
 const searchBooks = async (req, res) => {
   try {
-    const { q } = req.query;
-    if (!q || q.trim() === '') {
-      return res.status(400).json({ success: false, error: 'Search keyword required' });
-    }
-    
-    const books = await bookModel.searchBooks(q);
-    res.json({ success: true, data: books });
+    const books = await bookModel.searchBooks(req.query.q);
+    return res.json({
+      success: true,
+      data: books,
+    });
   } catch (error) {
-    console.error('searchBooks error:', error);
-    res.status(500).json({ success: false, error: 'Failed to search books' });
+    return handleServerError(res, error, 'search books');
   }
 };
 
@@ -96,6 +91,5 @@ module.exports = {
   createBook,
   updateBook,
   deleteBook,
-  searchBooks
+  searchBooks,
 };
-

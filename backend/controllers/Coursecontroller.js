@@ -17,7 +17,7 @@ const getSemesterCourses = async (req, res) => {
         const courses = await Course.findBySemesterId(semester_id);
         res.json(courses);
     } catch (error) {
-        console.error('Get courses error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -52,7 +52,7 @@ const createCourse = async (req, res) => {
             course_id,
         });
     } catch (error) {
-        console.error('Create course error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
         // Unique constraint: (semester_id, course_code)
         if (error.number === 2627 || error.number === 2601) {
             return res.status(400).json({ message: 'Course code already exists in this semester' });
@@ -87,7 +87,7 @@ const updateCourse = async (req, res) => {
             res.status(404).json({ message: 'Course not found' });
         }
     } catch (error) {
-        console.error('Update course error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -113,7 +113,7 @@ const deleteCourse = async (req, res) => {
             res.status(404).json({ message: 'Course not found' });
         }
     } catch (error) {
-        console.error('Delete course error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -129,7 +129,7 @@ const getAllCoursesWithGrades = async (req, res) => {
         const courses = await Course.getCoursesWithGrades(student_id);
         res.json(courses);
     } catch (error) {
-        console.error('Get courses with grades error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
         res.status(500).json({ message: 'Server error' });
     }
 };

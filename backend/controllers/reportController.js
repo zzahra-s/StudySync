@@ -12,7 +12,7 @@ const getCourseGrades = async (req, res) => {
         const grades = await Report.getCourseGrades(student_id);
         res.json(grades);
     } catch (error) {
-        console.error('Get course grades error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -28,7 +28,7 @@ const getCoursesPerSemester = async (req, res) => {
         const data = await Report.getCoursesPerSemester(student_id);
         res.json(data);
     } catch (error) {
-        console.error('Get courses per semester error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -44,7 +44,7 @@ const getIncompleteCourses = async (req, res) => {
         const courses = await Report.getIncompleteCourses(student_id);
         res.json(courses);
     } catch (error) {
-        console.error('Get incomplete courses error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
         res.status(500).json({ message: 'Server error' });
     }
 };

@@ -17,7 +17,7 @@ const getProfile = async (req, res) => {
 
         res.json(student);
     } catch (error) {
-        console.error('Get profile error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -42,7 +42,7 @@ const updateProfile = async (req, res) => {
 
         res.json({ message: 'Profile updated successfully' });
     } catch (error) {
-        console.error('Update profile error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
         if (error.number === 2627 || error.number === 2601) {
             return res.status(400).json({ message: 'Email already in use' });
         }
