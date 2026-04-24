@@ -10,16 +10,23 @@ const Profile = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  const studentId = user.student_id;
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const id = user.id || user._id;
-        if (!id) return;
-        const response = await fetchWithToken(`http://localhost:5001/api/students/${id}`);
+        if (!studentId) return;
+        const response = await fetchWithToken(`http://localhost:5001/api/students/${studentId}`);
         if (response.ok) {
           const data = await response.json();
-          setName(data.name || '');
+          // Backend uses full_name and email
+          setName(data.full_name || '');
           setEmail(data.email || '');
+          
+          // Update localStorage if the server has newer data
+          const updatedUser = { ...user, full_name: data.full_name, email: data.email };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
         } else {
           setError('Failed to fetch profile.');
         }
@@ -28,7 +35,7 @@ const Profile = () => {
       }
     };
     fetchProfile();
-  }, [user.id, user._id]);
+  }, [studentId]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -36,20 +43,21 @@ const Profile = () => {
     setError('');
 
     try {
-      const id = user.id || user._id;
-      const response = await fetchWithToken(`http://localhost:5001/api/students/${id}`, {
+      if (!studentId) return;
+      const response = await fetchWithToken(`http://localhost:5001/api/students/${studentId}`, {
         method: 'PUT',
-        body: JSON.stringify({ name, email })
+        body: JSON.stringify({ full_name: name, email })
       });
 
       if (response.ok) {
-        const updatedUser = { ...user, name, email };
-        localStorage.setItem('user', JSON.stringify(updatedUser)); // Keep storage in sync
+        const updatedUser = { ...user, full_name: name, email };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         setMessage('Profile updated successfully!');
         setIsEditing(false);
       } else {
-        setError('Failed to update profile.');
+        const data = await response.json();
+        setError(data.message || 'Failed to update profile.');
       }
     } catch (err) {
       setError('Network error.');
@@ -68,7 +76,7 @@ const Profile = () => {
       <div className="card">
         <form onSubmit={handleSave}>
           <div className="form-group">
-            <label>Name:</label>
+            <label>Full Name:</label>
             <input 
               type="text" 
               value={name} 
@@ -78,7 +86,7 @@ const Profile = () => {
             />
           </div>
           <div className="form-group">
-            <label>Email:</label>
+            <label>Email Address:</label>
             <input 
               type="email" 
               value={email} 
@@ -89,9 +97,9 @@ const Profile = () => {
           </div>
           
           {isEditing ? (
-            <div>
-              <button type="submit">Save</button>
-              <button type="button" onClick={() => setIsEditing(false)} style={{ background: '#6c757d' }}>Cancel</button>
+            <div style={{ marginTop: '15px' }}>
+              <button type="submit">Save Changes</button>
+              <button type="button" onClick={() => setIsEditing(false)} style={{ background: '#6c757d', marginLeft: '10px' }}>Cancel</button>
             </div>
           ) : (
             <button type="button" onClick={() => setIsEditing(true)}>Edit Profile</button>
