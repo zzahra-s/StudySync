@@ -30,6 +30,7 @@ const register = async (req, res) => {
       student_id,
     });
   } catch (error) {
+    console.error('Registration error details:', error);
     if (error.number === 2627 || error.number === 2601) {
       return res.status(400).json({ success: false, message: 'Email or roll number already exists' });
     }
@@ -79,6 +80,7 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('Login error details:', error);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
