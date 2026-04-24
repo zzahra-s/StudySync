@@ -20,7 +20,7 @@ const Dashboard = () => {
     const fetchHistory = async () => {
       if (!studentId) return;
       try {
-        const response = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/courses-with-grades`);
+        const response = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/courses`);
         if (response.ok) {
           const data = await response.json();
           setCourseHistory(data);
@@ -44,7 +44,7 @@ const Dashboard = () => {
     <div className="dashboard-container">
       <div className="nav-bar flex-between">
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <img src="/logo.png" alt="StudySync Logo" className="logo" />
+          <img src="/logo.png" alt="StudySync Logo" className="logo" style={{ width: '45px', height: 'auto', marginRight: '15px' }} />
           <Link to="/dashboard">Dashboard</Link>
           <Link to="/profile">Profile Settings</Link>
           <Link to="/semesters">Manage Academics</Link>
@@ -53,7 +53,7 @@ const Dashboard = () => {
       </div>
 
       <div className="welcome-banner">
-        <h2>Welcome back, {user.full_name || 'Student'}! 👋</h2>
+        <h2>Welcome back, {user.full_name || 'Student'}!</h2>
         <p className="student-meta">{user.roll_number} | {user.email}</p>
       </div>
       
