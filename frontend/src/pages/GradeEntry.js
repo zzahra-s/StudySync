@@ -6,7 +6,7 @@ const GradeEntry = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [grade, setGrade] = useState('');
-  const [existingGradeId, setExistingGradeId] = useState(null);
+  const [comments, setComments] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -16,17 +16,13 @@ const GradeEntry = () => {
         const response = await fetchWithToken(`http://localhost:5001/api/courses/${courseId}/grade`);
         if (response.ok) {
           const data = await response.json();
-          // Adjust checks based on whether your API returns array or single object
-          if (data && (data._id || data.id)) {
-            setExistingGradeId(data._id || data.id);
-            setGrade(data.grade);
-          } else if (Array.isArray(data) && data.length > 0) {
-            setExistingGradeId(data[0]._id || data[0].id);
-            setGrade(data[0].grade);
+          if (data && data.letter_grade) {
+            setGrade(data.letter_grade);
+            setComments(data.comments || '');
           }
         }
       } catch (err) {
-        setError('Error fetching existing grade.');
+        // Silent error if no grade exists yet
       }
     };
     fetchGrade();
@@ -38,28 +34,21 @@ const GradeEntry = () => {
     setError('');
 
     try {
-      if (existingGradeId) {
-        const response = await fetchWithToken(`http://localhost:5001/api/grades/${existingGradeId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ grade })
-        });
-        if (response.ok) {
-          setMessage('Grade updated successfully!');
-          setTimeout(() => navigate(-1), 1500); // Go back automatically
-        } else {
-          setError('Failed to update grade.');
-        }
+      // Your backend uses POST to both create and update for a specific courseId
+      const response = await fetchWithToken(`http://localhost:5001/api/courses/${courseId}/grade`, {
+        method: 'POST',
+        body: JSON.stringify({ 
+          letter_grade: grade.toUpperCase(), 
+          comments: comments 
+        })
+      });
+
+      if (response.ok) {
+        setMessage('Grade saved successfully!');
+        setTimeout(() => navigate(-1), 1500);
       } else {
-        const response = await fetchWithToken('http://localhost:5001/api/grades', {
-          method: 'POST',
-          body: JSON.stringify({ courseId, grade })
-        });
-        if (response.ok) {
-          setMessage('Grade saved successfully!');
-          setTimeout(() => navigate(-1), 1500);
-        } else {
-          setError('Failed to save grade.');
-        }
+        const data = await response.json();
+        setError(data.message || 'Failed to save grade. Ensure it is a valid letter grade (A, B+, etc)');
       }
     } catch (err) {
       setError('Network error.');
@@ -69,20 +58,38 @@ const GradeEntry = () => {
   return (
     <div>
       <div className="nav-bar">
-        <button onClick={() => navigate(-1)} style={{ background: 'transparent', margin: 0, padding: 0, color: '#fff', textDecoration: 'underline' }}>
-          Back to Courses
+        <button onClick={() => navigate(-1)} style={{ background: 'transparent', margin: 0, padding: 0, color: '#fff', textDecoration: 'underline', cursor: 'pointer', border: 'none' }}>
+           ← Back to Courses
         </button>
       </div>
 
-      <h2>Enter/Edit Grade</h2>
-      {message && <p className="success">{message}</p>}
-      {error && <p className="error">{error}</p>}
-
-      <div className="card">
+      <div className="card" style={{ marginTop: '20px' }}>
+        <h2>Record Grade</h2>
+        {message && <p className="success">{message}</p>}
+        {error && <p className="error">{error}</p>}
+        
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Grade (e.g., A, B, C, 95):</label>
-            <input type="text" value={grade} onChange={(e) => setGrade(e.target.value)} required />
+            <label>Letter Grade:</label>
+            <input 
+              type="text" 
+              placeholder="e.g. A, B+, B, C" 
+              value={grade} 
+              onChange={(e) => setGrade(e.target.value)} 
+              required 
+            />
+            <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+              Valid grades: A, A-, B+, B, B-, C+, C, F
+            </small>
+          </div>
+          <div className="form-group">
+            <label>Comments (Optional):</label>
+            <textarea 
+              value={comments} 
+              onChange={(e) => setComments(e.target.value)}
+              placeholder="How did you do?"
+              style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }}
+            ></textarea>
           </div>
           <button type="submit">Save Grade</button>
         </form>

@@ -9,7 +9,7 @@ const Courses = () => {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [creditHours, setCreditHours] = useState('');
-  const [editId, setEditId] = useState(null);
+  const [instructor, setInstructor] = useState('');
   const [error, setError] = useState('');
 
   const fetchCourses = async () => {
@@ -35,29 +35,27 @@ const Courses = () => {
     setError('');
 
     try {
-      if (editId) {
-        const response = await fetchWithToken(`http://localhost:5001/api/courses/${editId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ name, code, creditHours: Number(creditHours) })
-        });
-        if (response.ok) {
-          setEditId(null);
-        } else {
-          setError('Failed to update course.');
-        }
+      const response = await fetchWithToken('http://localhost:5001/api/courses', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          semester_id: parseInt(semesterId),
+          course_name: name, 
+          course_code: code, 
+          credit_hours: parseFloat(creditHours),
+          instructor_name: instructor
+        })
+      });
+
+      if (response.ok) {
+        setName('');
+        setCode('');
+        setCreditHours('');
+        setInstructor('');
+        fetchCourses();
       } else {
-        const response = await fetchWithToken('http://localhost:5001/api/courses', {
-          method: 'POST',
-          body: JSON.stringify({ name, code, creditHours: Number(creditHours), semesterId })
-        });
-        if (!response.ok) {
-          setError('Failed to add course.');
-        }
+        const data = await response.json();
+        setError(data.message || 'Failed to add course.');
       }
-      setName('');
-      setCode('');
-      setCreditHours('');
-      fetchCourses();
     } catch (err) {
       setError('Network error.');
     }
@@ -78,13 +76,6 @@ const Courses = () => {
     }
   };
 
-  const handleEditClick = (course) => {
-    setEditId(course._id || course.id);
-    setName(course.name);
-    setCode(course.code);
-    setCreditHours(course.creditHours);
-  };
-
   return (
     <div>
       <div className="nav-bar">
@@ -95,35 +86,39 @@ const Courses = () => {
       {error && <p className="error">{error}</p>}
 
       <div className="card">
-        <h3>{editId ? 'Edit Course' : 'Add Course'}</h3>
+        <h3>Add New Course</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <input type="text" placeholder="Course Name" value={name} onChange={(e) => setName(e.target.value)} required />
+            <label>Course Name:</label>
+            <input type="text" placeholder="e.g. Database Systems" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="form-group">
-            <input type="text" placeholder="Course Code" value={code} onChange={(e) => setCode(e.target.value)} required />
+            <label>Course Code:</label>
+            <input type="text" placeholder="e.g. CS210" value={code} onChange={(e) => setCode(e.target.value)} required />
           </div>
           <div className="form-group">
-            <input type="number" placeholder="Credit Hours" value={creditHours} onChange={(e) => setCreditHours(e.target.value)} required />
+            <label>Credit Hours:</label>
+            <input type="number" step="0.5" placeholder="e.g. 3.0" value={creditHours} onChange={(e) => setCreditHours(e.target.value)} required />
           </div>
-          <button type="submit">{editId ? 'Update' : 'Add'}</button>
-          {editId && (
-            <button type="button" onClick={() => { setEditId(null); setName(''); setCode(''); setCreditHours(''); }} style={{ background: '#6c757d' }}>Cancel</button>
-          )}
+          <div className="form-group">
+            <label>Instructor:</label>
+            <input type="text" placeholder="e.g. Dr. Ahmed" value={instructor} onChange={(e) => setInstructor(e.target.value)} />
+          </div>
+          <button type="submit">Add Course</button>
         </form>
       </div>
 
-      <div>
+      <div className="course-list">
         {courses.length === 0 ? <p>No courses found for this semester.</p> : (
           courses.map(course => (
-            <div key={course._id || course.id} className="card flex-between">
+            <div key={course.course_id} className="card flex-between">
               <div>
-                <strong>{course.name} ({course.code})</strong> - {course.creditHours} Credits
+                <strong>{course.course_name} ({course.course_code})</strong>
+                <p>{course.credit_hours} Credits | Instructor: {course.instructor_name || 'N/A'}</p>
               </div>
               <div>
-                <button onClick={() => navigate(`/courses/${course._id || course.id}/grade`)}>Enter Grade</button>
-                <button onClick={() => handleEditClick(course)} style={{ background: '#ffc107', color: 'black' }}>Edit</button>
-                <button onClick={() => handleDelete(course._id || course.id)} style={{ background: '#dc3545' }}>Delete</button>
+                <button onClick={() => navigate(`/courses/${course.course_id}/grade`)}>Enter Grade</button>
+                <button onClick={() => handleDelete(course.course_id)} style={{ background: '#dc3545', marginLeft: '10px' }}>Delete</button>
               </div>
             </div>
           ))
