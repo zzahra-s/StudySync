@@ -8,6 +8,7 @@ import Profile from './pages/Profile';
 import Semesters from './pages/Semesters';
 import Courses from './pages/Courses';
 import GradeEntry from './pages/GradeEntry';
+import DeadlinesPage from './pages/DeadlinesPage';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -23,6 +24,7 @@ function App() {
         <Route path="/semesters" element={<ProtectedRoute><Semesters /></ProtectedRoute>} />
         <Route path="/semesters/:semesterId/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
         <Route path="/courses/:courseId/grade" element={<ProtectedRoute><GradeEntry /></ProtectedRoute>} />
+        <Route path="/deadlines" element={<ProtectedRoute><DeadlinesPage /></ProtectedRoute>} />
 
         {/* Redirect unknown routes */}
         <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
