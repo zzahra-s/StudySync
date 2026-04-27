@@ -1,169 +1,216 @@
-import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from 'react';
 import useAuth from '../hooks/useAuth';
+import api from '../services/api';
 
 function StudyPlannerPage() {
   const { user } = useAuth();
-  const studentId = user?.studentId || user?.id;
-  const [tasks, setTasks] = useState([]);
-  const [studyHours, setStudyHours] = useState([]);
-  const [topCourses, setTopCourses] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const studentId = user?.studentId;
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError('');
+  const [tasks, setTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksError, setTasksError] = useState('');
+
+  const [studyHours, setStudyHours] = useState([]);
+  const [hoursLoading, setHoursLoading] = useState(false);
+  const [hoursError, setHoursError] = useState('');
+
+  const [topCourses, setTopCourses] = useState([]);
+  const [topCoursesLoading, setTopCoursesLoading] = useState(false);
+  const [topCoursesError, setTopCoursesError] = useState('');
+
+  const toDateOnly = (value) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  };
+
+  const formatDate = (value) => {
+    const date = toDateOnly(value);
+    if (!date) return 'N/A';
+    return date.toISOString().split('T')[0];
+  };
+
+  const normalizeTask = (task) => ({
+    id: task.id || task.taskId || `${task.title}-${task.dueDate}`,
+    title: task.title || 'Untitled Task',
+    courseName: task.courseName || task.course || 'N/A',
+    dueDate: task.dueDate || task.due_date || null
+  });
+
+  const normalizeCourseHours = (item, index) => ({
+    id: item.id || `${item.courseName || item.course || 'course'}-${index}`,
+    courseName: item.courseName || item.course || item.subject || item.fullCourseName || 'N/A',
+    totalHours: Number(item.totalHours ?? item.hours ?? item.grade ?? 0)
+  });
+
+  const fetchTasks = async () => {
+    if (!studentId) return;
+    setTasksLoading(true);
+    setTasksError('');
+
     try {
-      const [tasksRes, hoursRes, coursesRes] = await Promise.all([
-        api.get(`/students/${studentId}/study-planner`),
-        api.get(`/students/${studentId}/study-hours`),
-        api.get(`/students/${studentId}/top-courses`)
-      ]);
-      setTasks(tasksRes.data || []);
-      setStudyHours(hoursRes.data || []);
-      setTopCourses(coursesRes.data || []);
+      const response = await api.get(`/students/${studentId}/study-planner`);
+      const list = Array.isArray(response.data) ? response.data : [];
+      setTasks(list.map(normalizeTask));
     } catch (err) {
-      setError('Failed to load data');
+      setTasks([]);
+      setTasksError(err?.response?.data?.message || 'Failed to load study planner tasks.');
     } finally {
-      setLoading(false);
+      setTasksLoading(false);
+    }
+  };
+
+  const fetchStudyHours = async () => {
+    if (!studentId) return;
+    setHoursLoading(true);
+    setHoursError('');
+
+    try {
+      const response = await api.get(`/students/${studentId}/study-hours`);
+      const list = Array.isArray(response.data) ? response.data : [];
+      const normalized = list.map(normalizeCourseHours);
+
+      const aggregated = normalized.reduce((acc, item) => {
+        const key = item.courseName;
+        acc[key] = (acc[key] || 0) + (Number(item.totalHours) || 0);
+        return acc;
+      }, {});
+
+      const summary = Object.entries(aggregated).map(([courseName, totalHours], index) => ({
+        id: `${courseName}-${index}`,
+        courseName,
+        totalHours
+      }));
+
+      setStudyHours(summary);
+    } catch (err) {
+      setStudyHours([]);
+      setHoursError(err?.response?.data?.message || 'Failed to load study hours.');
+    } finally {
+      setHoursLoading(false);
+    }
+  };
+
+  const fetchTopCourses = async () => {
+    if (!studentId) return;
+    setTopCoursesLoading(true);
+    setTopCoursesError('');
+
+    try {
+      const response = await api.get(`/students/${studentId}/top-courses`);
+      const list = Array.isArray(response.data) ? response.data : [];
+      setTopCourses(list.map(normalizeCourseHours).slice(0, 5));
+    } catch (err) {
+      setTopCourses([]);
+      setTopCoursesError(err?.response?.data?.message || 'Failed to load top courses.');
+    } finally {
+      setTopCoursesLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchTasks();
+    fetchStudyHours();
+    fetchTopCourses();
   }, [studentId]);
 
-  const getToday = () => new Date().toISOString().split('T')[0];
-  const getDateOffset = (days) => new Date(Date.now() + days * 86400000).toISOString().split('T')[0];
+  const groupedTasks = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysLater = new Date(today);
+    sevenDaysLater.setDate(today.getDate() + 7);
 
-  const groupTasksByDate = () => {
-    const today = getToday();
-    const weekEnd = getDateOffset(7);
-    
-    const sections = {
-      today: [],
-      thisWeek: [],
-      later: []
+    const groups = {
+      todayTasks: [],
+      thisWeekTasks: [],
+      laterTasks: []
     };
 
-    tasks.forEach(task => {
-      if (task.dueDate === today) {
-        sections.today.push(task);
-      } else if (task.dueDate > today && task.dueDate <= weekEnd) {
-        sections.thisWeek.push(task);
-      } else if (task.dueDate > weekEnd) {
-        sections.later.push(task);
+    tasks.forEach((task) => {
+      const due = toDateOnly(task.dueDate);
+      if (!due) return;
+
+      if (due.getTime() === today.getTime()) {
+        groups.todayTasks.push(task);
+      } else if (due > today && due <= sevenDaysLater) {
+        groups.thisWeekTasks.push(task);
+      } else if (due > sevenDaysLater) {
+        groups.laterTasks.push(task);
       }
     });
 
-    return sections;
-  };
+    return groups;
+  }, [tasks]);
 
-  const maxHours = Math.max(...studyHours.map(h => h.hours || 0), 1);
+  const renderTaskSection = (heading, list) => (
+    <section style={{ marginBottom: '20px' }}>
+      <h2>{heading}</h2>
+      {list.length === 0 ? (
+        <p>No tasks</p>
+      ) : (
+        list.map((task) => (
+          <div key={task.id} style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '8px' }}>
+            <p><strong>{task.title}</strong></p>
+            <p>Course: {task.courseName}</p>
+            <p>Due: {formatDate(task.dueDate)}</p>
+          </div>
+        ))
+      )}
+    </section>
+  );
 
-  const sections = groupTasksByDate();
+  const renderHoursBarSection = (heading, items) => {
+    const maxHours = items.reduce((max, item) => Math.max(max, item.totalHours || 0), 0);
 
-  const styles = {
-    container: { padding: '20px', maxWidth: '1000px', margin: '0 auto' },
-    section: { marginTop: '30px' },
-    sectionTitle: { fontSize: '1.3em', fontWeight: 'bold', marginBottom: '15px', borderBottom: '2px solid #007bff', paddingBottom: '10px' },
-    taskList: { listStyle: 'none', padding: 0 },
-    taskItem: { padding: '10px', border: '1px solid #e0e0e0', marginBottom: '8px', borderRadius: '4px' },
-    hoursContainer: { marginTop: '30px' },
-    courseBar: { marginBottom: '15px' },
-    barLabel: { display: 'flex', justifyContent: 'space-between', marginBottom: '5px' },
-    progressBar: { width: '100%', height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px', overflow: 'hidden' },
-    progressFill: { height: '100%', backgroundColor: '#007bff', transition: 'width 0.3s' },
-    emptyText: { color: '#999' }
+    return (
+      <section style={{ marginTop: '28px' }}>
+        <h2>{heading}</h2>
+        {items.length === 0 ? (
+          <p>No data</p>
+        ) : (
+          items.map((item) => {
+            const barWidth = maxHours > 0 ? (item.totalHours / maxHours) * 100 : 0;
+            return (
+              <div key={item.id} style={{ marginBottom: '12px' }}>
+                <p style={{ marginBottom: '6px' }}>
+                  {item.courseName}: {item.totalHours}
+                </p>
+                <div style={{ width: '100%', height: '20px', backgroundColor: '#e5e7eb' }}>
+                  <div
+                    style={{
+                      width: `${barWidth}%`,
+                      height: '20px',
+                      backgroundColor: '#4f46e5'
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })
+        )}
+      </section>
+    );
   };
 
   return (
-    <div style={styles.container}>
+    <div style={{ padding: '20px' }}>
       <h1>Study Planner</h1>
 
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {tasksLoading && <p>Loading planner tasks...</p>}
+      {tasksError && <p style={{ color: 'red' }}>{tasksError}</p>}
 
-      <div style={styles.section}>
-        <div style={styles.sectionTitle}>Today</div>
-        {sections.today.length > 0 ? (
-          <ul style={styles.taskList}>
-            {sections.today.map(task => (
-              <li key={task.id} style={styles.taskItem}>
-                <strong>{task.title}</strong> - {task.course || 'No course'} ({task.dueDate})
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p style={styles.emptyText}>No tasks for today</p>
-        )}
-      </div>
+      {renderTaskSection('Today', groupedTasks.todayTasks)}
+      {renderTaskSection('This Week', groupedTasks.thisWeekTasks)}
+      {renderTaskSection('Later', groupedTasks.laterTasks)}
 
-      <div style={styles.section}>
-        <div style={styles.sectionTitle}>This Week</div>
-        {sections.thisWeek.length > 0 ? (
-          <ul style={styles.taskList}>
-            {sections.thisWeek.map(task => (
-              <li key={task.id} style={styles.taskItem}>
-                <strong>{task.title}</strong> - {task.course || 'No course'} ({task.dueDate})
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p style={styles.emptyText}>No tasks this week</p>
-        )}
-      </div>
+      {hoursLoading && <p>Loading study hours...</p>}
+      {hoursError && <p style={{ color: 'red' }}>{hoursError}</p>}
+      {!hoursLoading && !hoursError && renderHoursBarSection('Study Hours Summary', studyHours)}
 
-      <div style={styles.section}>
-        <div style={styles.sectionTitle}>Later</div>
-        {sections.later.length > 0 ? (
-          <ul style={styles.taskList}>
-            {sections.later.map(task => (
-              <li key={task.id} style={styles.taskItem}>
-                <strong>{task.title}</strong> - {task.course || 'No course'} ({task.dueDate})
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p style={styles.emptyText}>No tasks later</p>
-        )}
-      </div>
-
-      <div style={styles.hoursContainer}>
-        <h2>Study Hours by Course</h2>
-        {studyHours.length > 0 ? (
-          studyHours.map(item => (
-            <div key={item.id} style={styles.courseBar}>
-              <div style={styles.barLabel}>
-                <span>{item.subject || item.course}</span>
-                <span>{item.hours} hrs</span>
-              </div>
-              <div style={styles.progressBar}>
-                <div style={{ ...styles.progressFill, width: `${(item.hours / maxHours) * 100}%` }}></div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p style={styles.emptyText}>No study hours logged</p>
-        )}
-      </div>
-
-      <div style={styles.hoursContainer}>
-        <h2>Top Courses</h2>
-        {topCourses.length > 0 ? (
-          topCourses.map(item => (
-            <div key={item.id} style={styles.courseBar}>
-              <div style={styles.barLabel}>
-                <span>{item.course || item.title}</span>
-                <span>Grade: {item.grade}</span>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p style={styles.emptyText}>No top courses</p>
-        )}
-      </div>
+      {topCoursesLoading && <p>Loading top courses...</p>}
+      {topCoursesError && <p style={{ color: 'red' }}>{topCoursesError}</p>}
+      {!topCoursesLoading && !topCoursesError && renderHoursBarSection('Top Courses by Study Time', topCourses)}
     </div>
   );
 }

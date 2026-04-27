@@ -1,39 +1,57 @@
 import React, { useEffect, useState } from 'react';
-import api from '../services/api';
 import useAuth from '../hooks/useAuth';
+import api from '../services/api';
 
 function CourseMaterialsPage() {
   const { user } = useAuth();
-  const studentId = user?.studentId || user?.id;
+  const studentId = user?.studentId;
+
   const [courses, setCourses] = useState([]);
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [file, setFile] = useState(null);
-  const [description, setDescription] = useState('');
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadDescription, setUploadDescription] = useState('');
+
+  const formatDate = (value) => {
+    if (!value) return 'N/A';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toISOString().split('T')[0];
+  };
 
   const fetchCourses = async () => {
+    if (!studentId) return;
+
     try {
       const response = await api.get(`/students/${studentId}/courses`);
-      setCourses(response.data || []);
-      if (response.data?.length > 0) {
-        setSelectedCourseId(response.data[0].id);
+      const list = Array.isArray(response.data) ? response.data : [];
+      setCourses(list);
+      if (list.length > 0) {
+        const defaultId = list[0].id || list[0].course_id;
+        setSelectedCourseId(String(defaultId || ''));
       }
-    } catch (err) {
+    } catch {
       setCourses([]);
     }
   };
 
   const fetchMaterials = async (courseId) => {
-    if (!courseId) return;
+    if (!courseId) {
+      setMaterials([]);
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       const response = await api.get(`/courses/${courseId}/materials`);
-      setMaterials(response.data || []);
+      const list = Array.isArray(response.data) ? response.data : [];
+      setMaterials(list);
     } catch (err) {
-      setError('Failed to load materials');
+      setMaterials([]);
+      setError(err?.response?.data?.message || 'Failed to load materials.');
     } finally {
       setLoading(false);
     }
@@ -44,82 +62,64 @@ function CourseMaterialsPage() {
   }, [studentId]);
 
   useEffect(() => {
-    if (selectedCourseId) {
-      fetchMaterials(selectedCourseId);
-    }
+    fetchMaterials(selectedCourseId);
   }, [selectedCourseId]);
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this material?')) return;
+
+    try {
+      await api.delete(`/materials/${id}`);
+      fetchMaterials(selectedCourseId);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to delete material.');
+    }
   };
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file || !selectedCourseId) {
-      setError('Please select a file and course');
+    if (!uploadFile || !selectedCourseId) {
+      setError('Please select a course and file.');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('description', description);
-    formData.append('courseId', selectedCourseId);
-    formData.append('studentId', studentId);
+    setError('');
 
     try {
-      await api.post('/materials', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setFile(null);
-      setDescription('');
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('courseId', selectedCourseId);
+      formData.append('description', uploadDescription);
+      await api.post('/materials', formData);
+
+      setUploadFile(null);
+      setUploadDescription('');
       fetchMaterials(selectedCourseId);
     } catch (err) {
-      setError('Failed to upload file');
+      setError(err?.response?.data?.message || 'Failed to upload material.');
     }
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Delete this material?')) {
-      try {
-        await api.delete(`/materials/${id}`);
-        fetchMaterials(selectedCourseId);
-      } catch (err) {
-        setError('Failed to delete material');
-      }
-    }
-  };
-
-  const styles = {
-    container: { padding: '20px', maxWidth: '900px', margin: '0 auto' },
-    selector: { marginBottom: '20px' },
-    label: { display: 'block', marginBottom: '8px', fontWeight: 'bold' },
-    select: { padding: '8px', width: '100%', maxWidth: '300px', borderRadius: '4px', border: '1px solid #ccc' },
-    form: { border: '1px solid #ccc', padding: '15px', marginBottom: '20px', borderRadius: '4px', maxWidth: '500px' },
-    input: { display: 'block', width: '100%', padding: '8px', marginBottom: '10px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' },
-    fileInput: { display: 'block', marginBottom: '10px' },
-    btn: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    deleteBtn: { padding: '6px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    materialRow: { border: '1px solid #ddd', padding: '12px', marginBottom: '10px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-    materialInfo: { flex: 1 }
   };
 
   return (
-    <div style={styles.container}>
+    <div style={{ padding: '20px' }}>
       <h1>Course Materials</h1>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      <div style={styles.selector}>
-        <label style={styles.label}>Select Course:</label>
+      <div style={{ marginBottom: '12px' }}>
+        <label htmlFor="courseSelect">Course: </label>
         {courses.length > 0 ? (
           <select
+            id="courseSelect"
             value={selectedCourseId}
             onChange={(e) => setSelectedCourseId(e.target.value)}
-            style={styles.select}
           >
-            {courses.map(course => (
-              <option key={course.id} value={course.id}>{course.name || course.title}</option>
-            ))}
+            {courses.map((course) => {
+              const courseId = course.id || course.course_id;
+              return (
+                <option key={courseId} value={courseId}>
+                  {course.course_name || course.courseName || course.name || `Course ${courseId}`}
+                </option>
+              );
+            })}
           </select>
         ) : (
           <input
@@ -127,48 +127,54 @@ function CourseMaterialsPage() {
             placeholder="Enter course ID"
             value={selectedCourseId}
             onChange={(e) => setSelectedCourseId(e.target.value)}
-            style={styles.select}
           />
         )}
       </div>
 
-      <div style={styles.form}>
+      <form onSubmit={handleUpload} style={{ border: '1px solid #ddd', padding: '12px', marginBottom: '16px' }}>
         <h3>Upload Material</h3>
-        <form onSubmit={handleUpload}>
-          <input
-            type="file"
-            onChange={handleFileChange}
-            style={styles.fileInput}
-          />
+        <div style={{ marginBottom: '8px' }}>
+          <input type="file" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} required />
+        </div>
+        <div style={{ marginBottom: '8px' }}>
           <input
             type="text"
             placeholder="Description (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            style={styles.input}
+            value={uploadDescription}
+            onChange={(e) => setUploadDescription(e.target.value)}
           />
-          <button type="submit" style={styles.btn}>Upload</button>
-        </form>
-      </div>
+        </div>
+        <button type="submit">Upload</button>
+      </form>
 
       {loading && <p>Loading materials...</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
 
       <div>
-        <h3>Materials</h3>
-        {materials.length > 0 ? (
-          materials.map(material => (
-            <div key={material.id} style={styles.materialRow}>
-              <div style={styles.materialInfo}>
-                <p><strong>{material.fileName || material.name}</strong></p>
-                <p>{material.description}</p>
-                {material.uploadDate && <p><small>Uploaded: {material.uploadDate}</small></p>}
-                {material.url && <a href={material.url} target="_blank" rel="noopener noreferrer">Download</a>}
-              </div>
-              <button onClick={() => handleDelete(material.id)} style={styles.deleteBtn}>Delete</button>
-            </div>
-          ))
+        {materials.length === 0 && !loading ? (
+          <p>No materials</p>
         ) : (
-          <p>No materials yet</p>
+          materials.map((material) => {
+            const id = material.id || material.material_id;
+            const fileName = material.materialName || material.fileName || material.file_name || 'File';
+            const fileUrl = material.fileUrl || material.url;
+            const uploadedAt = material.uploadedAt || material.uploadDate || material.uploaded_at;
+
+            return (
+              <div key={id} style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '8px' }}>
+                <p><strong>{fileName}</strong></p>
+                <p>Uploaded: {formatDate(uploadedAt)}</p>
+                {fileUrl ? (
+                  <a href={fileUrl} target="_blank" rel="noreferrer">Download</a>
+                ) : (
+                  <span>No download URL</span>
+                )}
+                <div style={{ marginTop: '8px' }}>
+                  <button type="button" onClick={() => handleDelete(id)}>Delete</button>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </div>
