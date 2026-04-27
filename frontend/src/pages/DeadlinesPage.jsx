@@ -3,7 +3,8 @@ import api from '../services/api';
 import useAuth from '../hooks/useAuth';
 
 function DeadlinesPage() {
-  const { studentId } = useAuth();
+  const { user } = useAuth();
+  const studentId = user?.studentId || user?.id;
   const [deadlines, setDeadlines] = useState([]);
   const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(false);
