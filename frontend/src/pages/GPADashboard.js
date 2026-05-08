@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
 
 const GPADashboard = () => {
@@ -51,10 +50,6 @@ const GPADashboard = () => {
 
   return (
     <div className="page-container">
-      <div className="nav-bar">
-        <Link to="/dashboard">← Dashboard</Link>
-        <Link to="/scenarios">GPA Scenarios</Link>
-      </div>
 
       <div className="page-header">
         <h1 className="page-title">GPA Dashboard</h1>
