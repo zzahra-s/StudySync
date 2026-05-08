@@ -13,39 +13,38 @@ function TaskProgressDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchCourses = useCallback(async () => {
+  const fetchCourses = async () => {
     try {
       const response = await api.get(`/students/${studentId}/course-options`);
       setCourses(Array.isArray(response.data) ? response.data : []);
     } catch {
       setCourses([]);
     }
-  }, [studentId]);
+  };
 
-  const fetchTasks = useCallback(async (courseId) => {
+  const fetchTasks = async (courseId) => {
     if (!courseId) {
       setTasks([]);
       return;
     }
     setLoading(true);
-    setError('');
     try {
       const response = await api.get(`/students/${studentId}/task-manager?courseId=${courseId}`);
       setTasks(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to load tasks.');
+      setError('Failed to load tasks.');
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  };
 
   useEffect(() => {
     fetchCourses();
-  }, [fetchCourses]);
+  }, [studentId]);
 
   useEffect(() => {
     fetchTasks(selectedCourseId);
-  }, [selectedCourseId, fetchTasks]);
+  }, [selectedCourseId, studentId]);
 
   const addTask = async () => {
     if (!newTaskTitle.trim() || !selectedCourseId) return;
