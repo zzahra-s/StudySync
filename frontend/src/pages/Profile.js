@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
 
 const Profile = () => {
@@ -57,10 +56,7 @@ const Profile = () => {
   };
 
   return (
-    <div>
-      <div className="nav-bar">
-        <Link to="/dashboard">Back to Dashboard</Link>
-      </div>
+    <div className="page-container">
       <h2>My Profile</h2>
       {message && <p className="success">{message}</p>}
       {error && <p className="error">{error}</p>}
