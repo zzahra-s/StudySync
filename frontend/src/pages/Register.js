@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../services/api';
 
 const Register = () => {
-  const [name, setName] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [rollNumber, setRollNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -13,21 +15,16 @@ const Register = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+      await api.post('/auth/register', {
+        full_name: fullName,
+        roll_number: rollNumber,
+        email,
+        password
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        navigate('/login');
-      } else {
-        setError(data.message || 'Registration failed');
-      }
+      navigate('/login');
     } catch (err) {
-      setError('Network error. Please try again later.');
+      setError(err?.response?.data?.message || 'Network error. Please try again later.');
     }
   };
 
@@ -37,8 +34,12 @@ const Register = () => {
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleRegister}>
         <div className="form-group">
-          <label>Name:</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+          <label>Full Name:</label>
+          <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+        </div>
+        <div className="form-group">
+          <label>Roll Number:</label>
+          <input type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)} required />
         </div>
         <div className="form-group">
           <label>Email:</label>
