@@ -29,8 +29,9 @@ const Register = () => {
   };
 
   return (
-    <div>
-      <h2>Register</h2>
+    <div style={{ maxWidth: '500px', margin: '50px auto', textAlign: 'center' }}>
+      <img src="/logo.png" alt="StudySync Logo" style={{ height: '150px', width: 'auto', marginBottom: '25px', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))' }} />
+      <h2 style={{ fontSize: '2.2rem', fontWeight: '800', marginBottom: '25px' }}>Create an Account</h2>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleRegister}>
         <div className="form-group">
