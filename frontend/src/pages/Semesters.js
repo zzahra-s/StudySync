@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
 
 const Semesters = () => {
@@ -11,7 +11,7 @@ const Semesters = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const fetchSemesters = async () => {
+  const fetchSemesters = useCallback(async () => {
     if (!studentId) return;
     try {
       const response = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/semesters`);
@@ -24,11 +24,11 @@ const Semesters = () => {
     } catch (err) {
       setError('Network error.');
     }
-  };
+  }, [studentId]);
 
   useEffect(() => {
     fetchSemesters();
-  }, []);
+  }, [fetchSemesters]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -95,10 +95,7 @@ const Semesters = () => {
   };
 
   return (
-    <div>
-      <div className="nav-bar">
-        <Link to="/dashboard">Back to Dashboard</Link>
-      </div>
+    <div className="page-container">
 
       <h2>Semesters</h2>
       {error && <p className="error">{error}</p>}
