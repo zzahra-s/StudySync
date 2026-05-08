@@ -63,12 +63,7 @@ const GradeEntry = () => {
   };
 
   return (
-    <div>
-      <div className="nav-bar">
-        <button onClick={() => navigate(-1)} style={{ background: 'transparent', margin: 0, padding: 0, color: '#fff', textDecoration: 'underline' }}>
-          Back to Courses
-        </button>
-      </div>
+    <div className="page-container">
 
       <h2>Enter/Edit Grade</h2>
       {message && <p className="success">{message}</p>}
