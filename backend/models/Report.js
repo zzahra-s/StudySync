@@ -49,8 +49,7 @@ class Report {
             `);
         return result.recordset;
     }
-
-    // ─── Courses with no grade yet (incomplete) ───────────────────────────────
+//no grade yet
     static async getIncompleteCourses(student_id) {
         const pool = await poolPromise;
         const result = await pool.request()

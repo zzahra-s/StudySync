@@ -11,7 +11,7 @@ const getStudentSemesters = async (req, res) => {
         const semesters = await Semester.findByStudentId(student_id);
         res.json(semesters);
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Get semesters error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -40,8 +40,8 @@ const createSemester = async (req, res) => {
             semester_id,
         });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
-        // Unique constraint: (student_id, semester_name)
+        console.error('Create semester error:', error);
+        // Unique constraint,(student_id, semester_name)
         if (error.number === 2627 || error.number === 2601) {
             return res.status(400).json({ message: 'Semester name already exists for this student' });
         }
@@ -75,7 +75,7 @@ const updateSemester = async (req, res) => {
             res.status(404).json({ message: 'Semester not found' });
         }
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Update semester error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -101,7 +101,7 @@ const deleteSemester = async (req, res) => {
             res.status(404).json({ message: 'Semester not found' });
         }
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Delete semester error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };

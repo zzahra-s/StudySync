@@ -9,7 +9,7 @@ const getOwnedScenario = async (scenario_id, user_id) => {
     return { scenario };
 };
 
-//GET /api/students/:studentId/scenarios
+//get/api/students/:studentId/scenarios
 const getStudentScenarios = async (req, res) => {
     try {
         const student_id = parseInt(req.params.studentId);
@@ -19,12 +19,12 @@ const getStudentScenarios = async (req, res) => {
         const scenarios = await GPAScenario.findByStudentId(student_id);
         res.json(scenarios);
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Get scenarios error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
-// POST /api/scenarios
+//post/api/scenarios
 const createScenario = async (req, res) => {
     try {
         const { student_id, scenario_name } = req.body;
@@ -40,12 +40,12 @@ const createScenario = async (req, res) => {
         const scenario_id = await GPAScenario.create(parseInt(student_id), scenario_name);
         res.status(201).json({ message: 'Scenario created successfully', scenario_id });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Create scenario error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
-//GET /api/scenarios/:scenarioId 
+//get/api/scenarios/:scenarioId 
 const getScenario = async (req, res) => {
     try {
         const scenario_id = parseInt(req.params.scenarioId);
@@ -56,12 +56,12 @@ const getScenario = async (req, res) => {
         const courses = await GPAScenario.getScenarioCourses(scenario_id);
         res.json({ ...scenario, courses });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Get scenario error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
-//PUT /api/scenarios/:scenarioId 
+//put/api/scenarios/:scenarioId 
 const updateScenario = async (req, res) => {
     try {
         const scenario_id = parseInt(req.params.scenarioId);
@@ -77,12 +77,12 @@ const updateScenario = async (req, res) => {
         await GPAScenario.update(scenario_id, scenario_name);
         res.json({ message: 'Scenario updated successfully' });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Update scenario error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
-//DELETE /api/scenarios/:scenarioId
+//delete/api/scenarios/:scenarioId
 const deleteScenario = async (req, res) => {
     try {
         const scenario_id = parseInt(req.params.scenarioId);
@@ -92,12 +92,12 @@ const deleteScenario = async (req, res) => {
         await GPAScenario.delete(scenario_id);
         res.json({ message: 'Scenario deleted successfully' });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Delete scenario error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
-//GET /api/scenarios/:scenarioId/projection 
+//get/api/scenarios/:scenarioId/projection 
 const getProjection = async (req, res) => {
     try {
         const scenario_id = parseInt(req.params.scenarioId);
@@ -114,12 +114,12 @@ const getProjection = async (req, res) => {
 
         res.json(projection);
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Get projection error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
-//POST /api/scenarios/:scenarioId/courses
+//post/api/scenarios/:scenarioId/courses
 const addCourseToScenario = async (req, res) => {
     try {
         const scenario_id = parseInt(req.params.scenarioId);
@@ -139,8 +139,8 @@ const addCourseToScenario = async (req, res) => {
                 : 'Course added to scenario successfully',
         });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
-        // FK violation = invalid grade or course_id
+        console.error('Add course to scenario error:', error);
+        //fk violation,invalid grade or course_id
         if (error.number === 547) {
             return res.status(400).json({
                 message: 'Invalid expected_grade or course_id. Grade must be one of: A, A-, B+, B, B-, C+, C, F',
@@ -150,7 +150,7 @@ const addCourseToScenario = async (req, res) => {
     }
 };
 
-//DELETE /api/scenarios/:scenarioId/courses/:courseId
+// delete/api/scenarios/:scenarioId/courses/:courseId
 const removeCourseFromScenario = async (req, res) => {
     try {
         const scenario_id = parseInt(req.params.scenarioId);
@@ -165,7 +165,7 @@ const removeCourseFromScenario = async (req, res) => {
         }
         res.json({ message: 'Course removed from scenario successfully' });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Remove course from scenario error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };

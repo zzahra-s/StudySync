@@ -27,8 +27,8 @@ const addOrUpdateGrade = async (req, res) => {
             grade_id: result.id,
         });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
-        // FK violation — invalid letter_grade not in GradePoints table
+        console.error('Add/update grade error:', error);
+        // FK violation,invalid letter_grade not in GradePoints table
         if (error.number === 547) {
             return res.status(400).json({ message: 'Invalid letter grade. Must be one of: A, A-, B+, B, B-, C+, C, F' });
         }
@@ -39,7 +39,6 @@ const addOrUpdateGrade = async (req, res) => {
 const getCourseGrade = async (req, res) => {
     try {
         const course_id = parseInt(req.params.courseId);
-
         // Verify course belongs to the student
         const course = await Course.findById(course_id);
         if (!course) {
@@ -57,7 +56,7 @@ const getCourseGrade = async (req, res) => {
 
         res.json(grade);
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Get grade error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -79,7 +78,7 @@ const updateGrade = async (req, res) => {
             res.status(404).json({ message: 'Grade not found' });
         }
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Update grade error:', error);
         if (error.number === 547) {
             return res.status(400).json({ message: 'Invalid letter grade. Must be one of: A, A-, B+, B, B-, C+, C, F' });
         }
@@ -92,7 +91,7 @@ const getGradePoints = async (req, res) => {
         const gradePoints = await Grade.getGradePoints();
         res.json(gradePoints);
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Get grade points error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };

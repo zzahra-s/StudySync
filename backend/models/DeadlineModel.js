@@ -1,236 +1,159 @@
-const { sql, poolPromise } = require('../config/Database');
+const pool = require('../config/Database');
 
 const getDeadlinesByCourse = async (courseId) => {
-  const pool = await poolPromise;
-  const result = await pool.request().input('courseId', sql.Int, courseId).query(`
-      SELECT
-        d.deadline_id,
-        d.course_id,
-        d.title,
-        d.due_date,
-        d.status,
-        d.priority,
-        d.allocated_study_hours
-      FROM Deadlines d
-      WHERE d.course_id = @courseId
-      ORDER BY d.due_date ASC;
-    `);
-
-  return result.recordset;
+  const query = `
+    SELECT 
+      deadline_id,
+      course_id,
+      title,
+      due_date,
+      status,
+      priority,
+      allocated_study_hours
+    FROM Deadlines
+    WHERE course_id = ?
+    ORDER BY due_date ASC
+  `;
+  const [rows] = await pool.query(query, [courseId]);
+  return rows;
 };
 
 const getDeadlinesByStudent = async (studentId, filters = {}) => {
-  const pool = await poolPromise;
-  const request = pool.request().input('studentId', sql.Int, studentId);
-  const conditions = ['s.student_id = @studentId'];
+  let query = `
+    SELECT 
+      d.deadline_id,
+      d.course_id,
+      d.title,
+      d.due_date,
+      d.status,
+      d.priority,
+      d.allocated_study_hours,
+      c.course_code,
+      c.course_name
+    FROM Deadlines d
+    JOIN Courses c ON d.course_id = c.course_id
+    JOIN Semesters s ON c.semester_id = s.semester_id
+    WHERE s.student_id = ?
+  `;
+
+  const params = [studentId];
 
   if (filters.status) {
-    conditions.push('d.status = @status');
-    request.input('status', sql.VarChar(10), filters.status);
+    query += ` AND d.status = ?`;
+    params.push(filters.status);
   }
 
   if (filters.priority) {
-    conditions.push('d.priority = @priority');
-    request.input('priority', sql.VarChar(10), filters.priority);
+    query += ` AND d.priority = ?`;
+    params.push(filters.priority);
   }
 
-  if (filters.upcoming) {
-    conditions.push("d.status = 'Pending'");
-    conditions.push('d.due_date >= GETDATE()');
-    conditions.push('d.due_date <= DATEADD(day, 7, GETDATE())');
+  if (filters.upcoming === true) {
+    query += ` AND d.status = 'Pending' AND d.due_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)`;
   }
 
-  if (filters.overdue) {
-    conditions.push("d.status = 'Pending'");
-    conditions.push('d.due_date < GETDATE()');
+  if (filters.overdue === true) {
+    query += ` AND d.status = 'Pending' AND d.due_date < NOW()`;
   }
 
-  const result = await request.query(`
-      SELECT
-        d.deadline_id,
-        d.course_id,
-        d.title,
-        d.due_date,
-        d.status,
-        d.priority,
-        d.allocated_study_hours,
-        c.course_code,
-        c.course_name,
-        c.instructor_name,
-        s.semester_id,
-        s.semester_name
-      FROM Deadlines d
-      INNER JOIN Courses c ON d.course_id = c.course_id
-      INNER JOIN Semesters s ON c.semester_id = s.semester_id
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY d.due_date ASC;
-    `);
+  query += ` ORDER BY d.due_date ASC`;
 
-  return result.recordset;
+  const [rows] = await pool.query(query, params);
+  return rows;
+};
+
+const getDeadlineById = async (deadlineId) => {
+  const query = `
+    SELECT 
+      deadline_id,
+      course_id,
+      title,
+      due_date,
+      status,
+      priority,
+      allocated_study_hours
+    FROM Deadlines
+    WHERE deadline_id = ?
+  `;
+  const [rows] = await pool.query(query, [deadlineId]);
+  return rows[0] || null;
 };
 
 const createDeadline = async (deadlineData) => {
-  const pool = await poolPromise;
-  const result = await pool
-    .request()
-    .input('course_id', sql.Int, deadlineData.course_id)
-    .input('title', sql.VarChar(150), deadlineData.title)
-    .input('due_date', sql.DateTime, new Date(deadlineData.due_date))
-    .input('status', sql.VarChar(10), deadlineData.status || 'Pending')
-    .input('priority', sql.VarChar(10), deadlineData.priority || 'Medium')
-    .input('allocated_study_hours', sql.Decimal(4, 1), deadlineData.allocated_study_hours ?? 0)
-    .query(`
-      INSERT INTO Deadlines (course_id, title, due_date, status, priority, allocated_study_hours)
-      OUTPUT
-        INSERTED.deadline_id,
-        INSERTED.course_id,
-        INSERTED.title,
-        INSERTED.due_date,
-        INSERTED.status,
-        INSERTED.priority,
-        INSERTED.allocated_study_hours
-      VALUES (@course_id, @title, @due_date, @status, @priority, @allocated_study_hours);
-    `);
+  const { courseId, title, dueDate, status = 'Pending', priority = 'Medium', allocatedStudyHours = 0 } = deadlineData;
 
-  return result.recordset[0];
+  const query = `
+    INSERT INTO Deadlines (course_id, title, due_date, status, priority, allocated_study_hours)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  const [result] = await pool.query(query, [
+    courseId,
+    title,
+    dueDate,
+    status,
+    priority,
+    allocatedStudyHours
+  ]);
+
+  return {
+    deadline_id: result.insertId,
+    course_id: courseId,
+    title,
+    due_date: dueDate,
+    status,
+    priority,
+    allocated_study_hours: allocatedStudyHours
+  };
 };
 
-const updateDeadline = async (deadlineId, updates) => {
-  const pool = await poolPromise;
-  const request = pool.request().input('deadline_id', sql.Int, deadlineId);
-  const assignments = [];
+const updateDeadline = async (deadlineId, updateData) => {
+  const fields = [];
+  const values = [];
 
-  if (updates.title !== undefined) {
-    assignments.push('title = @title');
-    request.input('title', sql.VarChar(150), updates.title);
+  if (updateData.title !== undefined) {
+    fields.push('title = ?');
+    values.push(updateData.title);
+  }
+  if (updateData.dueDate !== undefined) {
+    fields.push('due_date = ?');
+    values.push(updateData.dueDate);
+  }
+  if (updateData.status !== undefined) {
+    fields.push('status = ?');
+    values.push(updateData.status);
+  }
+  if (updateData.priority !== undefined) {
+    fields.push('priority = ?');
+    values.push(updateData.priority);
+  }
+  if (updateData.allocatedStudyHours !== undefined) {
+    fields.push('allocated_study_hours = ?');
+    values.push(updateData.allocatedStudyHours);
   }
 
-  if (updates.due_date !== undefined) {
-    assignments.push('due_date = @due_date');
-    request.input('due_date', sql.DateTime, new Date(updates.due_date));
+  if (fields.length === 0) {
+    return { affectedRows: 0 };
   }
 
-  if (updates.status !== undefined) {
-    assignments.push('status = @status');
-    request.input('status', sql.VarChar(10), updates.status);
-  }
+  values.push(deadlineId);
+  const query = `UPDATE Deadlines SET ${fields.join(', ')} WHERE deadline_id = ?`;
 
-  if (updates.priority !== undefined) {
-    assignments.push('priority = @priority');
-    request.input('priority', sql.VarChar(10), updates.priority);
-  }
-
-  if (updates.allocated_study_hours !== undefined) {
-    assignments.push('allocated_study_hours = @allocated_study_hours');
-    request.input('allocated_study_hours', sql.Decimal(4, 1), updates.allocated_study_hours);
-  }
-
-  if (updates.course_id !== undefined) {
-    assignments.push('course_id = @course_id');
-    request.input('course_id', sql.Int, updates.course_id);
-  }
-
-  if (assignments.length === 0) {
-    return null;
-  }
-
-  const result = await request.query(`
-      UPDATE Deadlines
-      SET ${assignments.join(', ')}
-      OUTPUT
-        INSERTED.deadline_id,
-        INSERTED.course_id,
-        INSERTED.title,
-        INSERTED.due_date,
-        INSERTED.status,
-        INSERTED.priority,
-        INSERTED.allocated_study_hours
-      WHERE deadline_id = @deadline_id;
-    `);
-
-  return result.recordset[0] || null;
+  const [result] = await pool.query(query, values);
+  return result;
 };
 
 const deleteDeadline = async (deadlineId) => {
-  const pool = await poolPromise;
-  const result = await pool.request().input('deadlineId', sql.Int, deadlineId).query(`
-      DELETE FROM Deadlines
-      WHERE deadline_id = @deadlineId;
-    `);
-
-  return result.rowsAffected[0] > 0;
-};
-
-const getStudyPlanner = async (studentId) => {
-  const pool = await poolPromise;
-  const result = await pool.request().input('studentId', sql.Int, studentId).query(`
-      SELECT
-        d.deadline_id,
-        d.title AS task_name,
-        d.due_date,
-        d.priority,
-        d.allocated_study_hours,
-        c.course_id,
-        c.course_code,
-        c.course_name,
-        c.instructor_name,
-        s.semester_name
-      FROM Deadlines d
-      INNER JOIN Courses c ON d.course_id = c.course_id
-      INNER JOIN Semesters s ON c.semester_id = s.semester_id
-      WHERE s.student_id = @studentId
-        AND d.status = 'Pending'
-      ORDER BY d.due_date ASC;
-    `);
-
-  return result.recordset;
-};
-
-const getStudyHoursPerCourse = async (studentId) => {
-  const pool = await poolPromise;
-  const result = await pool.request().input('studentId', sql.Int, studentId).query(`
-      SELECT
-        c.course_id,
-        c.course_code,
-        c.course_name,
-        CAST(ISNULL(SUM(d.allocated_study_hours), 0) AS DECIMAL(6, 1)) AS total_hours
-      FROM Courses c
-      INNER JOIN Semesters s ON c.semester_id = s.semester_id
-      LEFT JOIN Deadlines d ON c.course_id = d.course_id
-      WHERE s.student_id = @studentId
-      GROUP BY c.course_id, c.course_code, c.course_name
-      ORDER BY total_hours DESC, c.course_code ASC;
-    `);
-
-  return result.recordset;
-};
-
-const getTopCoursesByStudyHours = async (studentId) => {
-  const pool = await poolPromise;
-  const result = await pool.request().input('studentId', sql.Int, studentId).query(`
-      SELECT TOP 3
-        c.course_id,
-        c.course_code,
-        c.course_name,
-        CAST(SUM(d.allocated_study_hours) AS DECIMAL(6, 1)) AS total_hours
-      FROM Courses c
-      INNER JOIN Semesters s ON c.semester_id = s.semester_id
-      INNER JOIN Deadlines d ON c.course_id = d.course_id
-      WHERE s.student_id = @studentId
-      GROUP BY c.course_id, c.course_code, c.course_name
-      ORDER BY total_hours DESC, c.course_code ASC;
-    `);
-
-  return result.recordset;
+  const query = `DELETE FROM Deadlines WHERE deadline_id = ?`;
+  const [result] = await pool.query(query, [deadlineId]);
+  return result;
 };
 
 module.exports = {
   getDeadlinesByCourse,
   getDeadlinesByStudent,
+  getDeadlineById,
   createDeadline,
   updateDeadline,
-  deleteDeadline,
-  getStudyPlanner,
-  getStudyHoursPerCourse,
-  getTopCoursesByStudyHours,
+  deleteDeadline
 };

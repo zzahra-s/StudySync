@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require('../config/Database');  // FIXED: Database.js
+const { sql, poolPromise } = require('../config/Database');
 
 class Student {
     static async create(studentData) {
@@ -22,6 +22,14 @@ class Student {
         const result = await pool.request()
             .input('email', sql.VarChar(100), email)
             .query('SELECT * FROM Students WHERE email = @email');
+        return result.recordset[0];
+    }
+
+    static async findForLogin(identifier) {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('identifier', sql.VarChar(100), identifier)
+            .query('SELECT * FROM Students WHERE email = @identifier OR roll_number = @identifier');
         return result.recordset[0];
     }
 
@@ -53,4 +61,3 @@ class Student {
 }
 
 module.exports = Student;
-

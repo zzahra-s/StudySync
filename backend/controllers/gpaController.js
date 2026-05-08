@@ -1,7 +1,7 @@
 
 const GPA = require('../models/GPA');
 
-//GET /api/students/:studentId/cgpa
+//get/api/students/:studentId/cgpa
 const getCGPA = async (req, res) => {
     try {
         const student_id = parseInt(req.params.studentId);
@@ -26,11 +26,12 @@ const getCGPA = async (req, res) => {
 
         res.json(data);
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Get CGPA error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
-// GET /api/students/:studentId/semester-gpa 
+//get/api/students/:studentId/semester-gpa 
 const getSemesterGPA = async (req, res) => {
     try {
         const student_id = parseInt(req.params.studentId);
@@ -50,17 +51,19 @@ const getSemesterGPA = async (req, res) => {
 
         res.json({ semesters: data });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Get semester GPA error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
-//GET /api/admin/average-gpa 
+//get/api/admin/average-gpa 
 const getAverageGPA = async (req, res) => {
     try {
         const data = await GPA.getOverallAverageCGPA();
         res.json(data);
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Get average GPA error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 };
 

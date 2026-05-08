@@ -2,10 +2,10 @@ const { sql, poolPromise } = require('../config/database');
 
 class Grade {
     static async createOrUpdate(gradeData) {
-        const { course_id, letter_grade, comments } = gradeData;
+        const { course_id, comments } = gradeData;
+        const letter_grade = (gradeData.letter_grade || '').toUpperCase().trim(); 
         const pool = await poolPromise;
 
-        // Check if grade exists (course_id is unique in Grades table)
         const existing = await pool.request()
             .input('course_id', sql.Int, course_id)
             .query('SELECT grade_id FROM Grades WHERE course_id = @course_id');
@@ -49,7 +49,8 @@ class Grade {
     }
 
     static async update(grade_id, gradeData) {
-        const { letter_grade, comments } = gradeData;
+        const { comments } = gradeData;
+        const letter_grade = (gradeData.letter_grade || '').toUpperCase().trim(); // 👈 CHANGED
         const pool = await poolPromise;
         const result = await pool.request()
             .input('grade_id', sql.Int, grade_id)
