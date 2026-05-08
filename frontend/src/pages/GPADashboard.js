@@ -6,8 +6,8 @@ const GPADashboard = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const studentId = user.student_id;
 
-  const [cgpaData, setCgpaData] = useState(null);     
-  const [semesterGPAs, setSemesterGPAs] = useState([]); 
+  const [cgpaData, setCgpaData] = useState(null);
+  const [semesterGPAs, setSemesterGPAs] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -37,61 +37,85 @@ const GPADashboard = () => {
         setLoading(false);
       }
     };
-
-    if (studentId) {
-      fetchData();
-    }
+    if (studentId) fetchData();
   }, [studentId]);
 
-  if (loading) return <p>Loading GPA data...</p>;
+  if (loading) return <div className="loading">Loading GPA data</div>;
+
+  const gpaColor = (gpa) => {
+    if (!gpa) return 'var(--text-muted)';
+    if (gpa >= 3.5) return 'var(--green)';
+    if (gpa >= 2.5) return 'var(--indigo)';
+    return 'var(--red)';
+  };
 
   return (
-    <div>
+    <div className="page-container">
       <div className="nav-bar">
-        <Link to="/dashboard">Back to Dashboard</Link>
-        <Link to="/scenarios" style={{ marginLeft: '15px' }}>GPA Scenarios</Link>
+        <Link to="/dashboard">← Dashboard</Link>
+        <Link to="/scenarios">GPA Scenarios</Link>
       </div>
 
-      <h2>GPA Dashboard</h2>
+      <div className="page-header">
+        <h1 className="page-title">GPA Dashboard</h1>
+        <p className="description">Track your cumulative and semester-wise academic performance.</p>
+      </div>
 
       {error && <p className="error">{error}</p>}
-
-      {/*overall gpa*/}
 
       <div className="card">
         <h3>Overall CGPA</h3>
         {cgpaData && cgpaData.cgpa !== null ? (
-          <div>
-            <p><strong>CGPA:</strong> {cgpaData.cgpa}</p>
-            <p><strong>Graded Courses:</strong> {cgpaData.graded_courses}</p>
-            <p><strong>Total Credit Hours:</strong> {cgpaData.total_credit_hours}</p>
-          </div>
+          <>
+            <p className="gpa-number" style={{ color: gpaColor(cgpaData.cgpa) }}>
+              {cgpaData.cgpa}
+            </p>
+            <div className="stat-row">
+              <div className="stat-box">
+                <div className="stat-val">{cgpaData.graded_courses}</div>
+                <div className="stat-lbl">Graded Courses</div>
+              </div>
+              <div className="stat-box">
+                <div className="stat-val">{cgpaData.total_credit_hours}</div>
+                <div className="stat-lbl">Credit Hours</div>
+              </div>
+            </div>
+          </>
         ) : (
-          <p>No graded courses yet. Add grades to your courses to see your CGPA.</p>
+          <div className="empty-state">
+            <span className="emoji">🎓</span>
+            No graded courses yet. Add grades to see your CGPA.
+          </div>
         )}
       </div>
-      {/* semester wise gpa*/}
+
       <div className="card">
         <h3>Semester-wise GPA</h3>
         {semesterGPAs.length === 0 ? (
-          <p>No semester GPA data available yet.</p>
+          <div className="empty-state" style={{ padding: '24px 0' }}>
+            No semester GPA data available yet.
+          </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table>
             <thead>
               <tr>
-                <th style={thStyle}>Semester</th>
-                <th style={thStyle}>GPA</th>
-                <th style={thStyle}>Graded Courses</th>
-                <th style={thStyle}>Credit Hours</th>
+                <th>Semester</th>
+                <th>GPA</th>
+                <th>Graded Courses</th>
+                <th>Credit Hours</th>
               </tr>
             </thead>
             <tbody>
               {semesterGPAs.map((sem) => (
                 <tr key={sem.semester_id}>
-                  <td style={tdStyle}>{sem.semester_name}</td>
-                  <td style={tdStyle}>{sem.semester_gpa}</td>
-                  <td style={tdStyle}>{sem.graded_courses}</td>
-                  <td style={tdStyle}>{sem.total_credit_hours}</td>
+                  <td>{sem.semester_name}</td>
+                  <td>
+                    <strong style={{ color: gpaColor(sem.semester_gpa) }}>
+                      {sem.semester_gpa}
+                    </strong>
+                  </td>
+                  <td>{sem.graded_courses}</td>
+                  <td>{sem.total_credit_hours}</td>
                 </tr>
               ))}
             </tbody>
@@ -101,8 +125,5 @@ const GPADashboard = () => {
     </div>
   );
 };
-
-const thStyle = { borderBottom: '2px solid #ccc', padding: '8px', textAlign: 'left' };
-const tdStyle = { borderBottom: '1px solid #eee', padding: '8px' };
 
 export default GPADashboard;
