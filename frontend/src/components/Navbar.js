@@ -16,71 +16,62 @@ const Navbar = () => {
 
   if (!isAuthenticated) return null;
 
-  const styles = {
-    navbar: {
-      backgroundColor: '#111',
-      padding: '12px 20px',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      color: 'white',
-      position: 'sticky',
-      top: 0,
-      zIndex: 999,
-      boxShadow: '0 2px 6px rgba(0,0,0,0.25)'
-    },
-    linkGroup: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: '12px',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gridColumn: '3'
-    },
-    navLink: {
-      color: 'white',
-      textDecoration: 'none',
-      padding: '8px 12px',
-      borderRadius: '4px',
-      backgroundColor: 'transparent',
-      transition: 'background 0.2s'
-    },
-    logoutBtn: {
-      backgroundColor: '#d9534f',
-      color: 'white',
-      border: 'none',
-      padding: '8px 14px',
-      borderRadius: '4px',
-      cursor: 'pointer'
-    }
+  const navbarStyle = {
+    backgroundColor: '#111',
+    padding: '10px 20px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    color: 'white',
+    position: 'sticky',
+    top: 0,
+    zIndex: 999
+  };
+
+  const navBrandStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    cursor: 'pointer',
+    fontSize: '1.2rem',
+    fontWeight: 'bold'
+  };
+
+  const navLinksStyle = {
+    display: 'flex',
+    gap: '15px',
+    alignItems: 'center'
+  };
+
+  const linkStyle = {
+    color: 'white',
+    textDecoration: 'none',
+    fontSize: '0.9rem'
+  };
+
+  const logoutBtnStyle = {
+    backgroundColor: '#d9534f',
+    color: 'white',
+    border: 'none',
+    padding: '6px 12px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '0.9rem'
   };
 
   return (
-    <nav style={styles.navbar}>
-      <div style={{ gridColumn: '1' }}></div>
-      <div 
-        style={{ 
-          gridColumn: '2',
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '12px', 
-          fontWeight: 'bold', 
-          cursor: 'pointer',
-          fontSize: '1.2rem'
-        }} 
-        onClick={() => navigate('/dashboard')}
-      >
-        <img src="/logo.png" alt="StudySync Logo" style={{ height: '55px', width: 'auto', objectFit: 'contain', transition: 'transform 0.3s ease' }} className="nav-logo" />
-        <span style={{ fontSize: '1.4rem', letterSpacing: '-0.5px' }}>StudySync</span>
+    <nav style={navbarStyle}>
+      <div style={navBrandStyle} onClick={() => navigate('/dashboard')}>
+        <img src="/logo.png" alt="StudySync Logo" style={{ height: '50px', width: 'auto', transition: 'transform 0.3s' }} className="nav-logo" />
+        <span>StudySync</span>
       </div>
-      <div style={styles.linkGroup}>
-        <Link to="/dashboard" style={styles.navLink}>Dashboard</Link>
-        <Link to="/deadlines" style={styles.navLink}>Deadlines</Link>
-        <Link to="/materials" style={styles.navLink}>Materials</Link>
-        <Link to="/books" style={styles.navLink}>Books</Link>
-        <Link to="/progress" style={styles.navLink}>Progress</Link>
-        <Link to="/profile" style={styles.navLink}>Profile</Link>
-        <button type="button" onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
+
+      <div style={navLinksStyle}>
+        <Link to="/dashboard" style={linkStyle}>Dashboard</Link>
+        <Link to="/deadlines" style={linkStyle}>Deadlines</Link>
+        <Link to="/materials" style={linkStyle}>Materials</Link>
+        <Link to="/profile" style={linkStyle}>Profile</Link>
+        <button onClick={handleLogout} style={logoutBtnStyle}>Logout</button>
       </div>
       <style>{`
         .nav-logo:hover {
