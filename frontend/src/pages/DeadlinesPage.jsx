@@ -27,7 +27,7 @@ function DeadlinesPage() {
     return String(value).split('T')[0];
   };
 
-  const fetchCourses = useCallback(async () => {
+  const fetchCourses = async () => {
     if (!studentId) return;
     try {
       const response = await api.get(`/students/${studentId}/course-options`);
@@ -35,13 +35,12 @@ function DeadlinesPage() {
     } catch {
       setCourses([]);
     }
-  }, [studentId]);
+  };
 
-  const fetchDeadlines = useCallback(async () => {
+  const fetchDeadlines = async () => {
     if (!studentId) return;
 
     setLoading(true);
-    setError('');
     try {
       let url = `/students/${studentId}/deadlines`;
       if (filterStatus) {
@@ -53,20 +52,20 @@ function DeadlinesPage() {
       const response = await api.get(url);
       setDeadlines(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to load deadlines.');
+      setError('Failed to load deadlines.');
       setDeadlines([]);
     } finally {
       setLoading(false);
     }
-  }, [studentId, filterStatus, selectedCourseId]);
+  };
 
   useEffect(() => {
     fetchCourses();
-  }, [fetchCourses]);
+  }, [studentId]);
 
   useEffect(() => {
     fetchDeadlines();
-  }, [fetchDeadlines]);
+  }, [studentId, filterStatus, selectedCourseId]);
 
   const resetForm = () => {
     setFormData({ title: '', description: '', dueDate: '', status: 'Pending', courseId: '' });
