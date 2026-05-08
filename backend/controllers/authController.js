@@ -50,8 +50,13 @@ const login = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Verify password
-        const isValidPassword = await bcrypt.compare(password, student.password);
+        // Verify password. Support legacy plain-text seeded rows too.
+        let isValidPassword = false;
+        if (student.password && (student.password.startsWith('$2a$') || student.password.startsWith('$2b$') || student.password.startsWith('$2y$'))) {
+            isValidPassword = await bcrypt.compare(password, student.password);
+        } else {
+            isValidPassword = password === student.password;
+        }
         if (!isValidPassword) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
