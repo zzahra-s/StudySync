@@ -38,7 +38,11 @@ const Courses = () => {
       if (editId) {
         const response = await fetchWithToken(`http://localhost:5001/api/courses/${editId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, code, creditHours: Number(creditHours) })
+          body: JSON.stringify({
+            course_name: name,
+            course_code: code,
+            credit_hours: Number(creditHours)
+          })
         });
         if (response.ok) {
           setEditId(null);
@@ -48,7 +52,12 @@ const Courses = () => {
       } else {
         const response = await fetchWithToken('http://localhost:5001/api/courses', {
           method: 'POST',
-          body: JSON.stringify({ name, code, creditHours: Number(creditHours), semesterId })
+          body: JSON.stringify({
+            semester_id: Number(semesterId),
+            course_name: name,
+            course_code: code,
+            credit_hours: Number(creditHours)
+          })
         });
         if (!response.ok) {
           setError('Failed to add course.');
@@ -79,10 +88,10 @@ const Courses = () => {
   };
 
   const handleEditClick = (course) => {
-    setEditId(course._id || course.id);
-    setName(course.name);
-    setCode(course.code);
-    setCreditHours(course.creditHours);
+    setEditId(course.course_id || course.id);
+    setName(course.course_name || course.name || '');
+    setCode(course.course_code || course.code || '');
+    setCreditHours(course.credit_hours || course.creditHours || '');
   };
 
   return (
@@ -116,14 +125,14 @@ const Courses = () => {
       <div>
         {courses.length === 0 ? <p>No courses found for this semester.</p> : (
           courses.map(course => (
-            <div key={course._id || course.id} className="card flex-between">
+            <div key={course.course_id || course.id} className="card flex-between">
               <div>
-                <strong>{course.name} ({course.code})</strong> - {course.creditHours} Credits
+                <strong>{course.course_name || course.name} ({course.course_code || course.code})</strong> - {course.credit_hours || course.creditHours} Credits
               </div>
               <div>
-                <button onClick={() => navigate(`/courses/${course._id || course.id}/grade`)}>Enter Grade</button>
+                <button onClick={() => navigate(`/courses/${course.course_id || course.id}/grade`)}>Enter Grade</button>
                 <button onClick={() => handleEditClick(course)} style={{ background: '#ffc107', color: 'black' }}>Edit</button>
-                <button onClick={() => handleDelete(course._id || course.id)} style={{ background: '#dc3545' }}>Delete</button>
+                <button onClick={() => handleDelete(course.course_id || course.id)} style={{ background: '#dc3545' }}>Delete</button>
               </div>
             </div>
           ))
