@@ -25,6 +25,14 @@ class Student {
         return result.recordset[0];
     }
 
+    static async findForLogin(identifier) {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('identifier', sql.VarChar(100), identifier)
+            .query('SELECT * FROM Students WHERE email = @identifier OR roll_number = @identifier');
+        return result.recordset[0];
+    }
+
     static async findById(student_id) {
         const pool = await poolPromise;
         const result = await pool.request()
