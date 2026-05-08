@@ -18,7 +18,7 @@ const Profile = () => {
         const response = await fetchWithToken(`http://localhost:5001/api/students/${id}`);
         if (response.ok) {
           const data = await response.json();
-          setName(data.name || '');
+          setName(data.full_name || data.name || '');
           setEmail(data.email || '');
         } else {
           setError('Failed to fetch profile.');
@@ -39,7 +39,7 @@ const Profile = () => {
       const id = user.id || user._id;
       const response = await fetchWithToken(`http://localhost:5001/api/students/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ name, email })
+        body: JSON.stringify({ full_name: name, email })
       });
 
       if (response.ok) {
