@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../services/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -11,23 +12,29 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      const response = await fetch('http://localhost:5001/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      const response = await api.post('/auth/login', { email, password });
+      const data = response.data || {};
+      const student = data.student || data.user;
 
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        navigate('/dashboard');
-      } else {
-        setError(data.message || 'Login failed');
+      if (!student || !data.token) {
+        setError('Invalid login response from server.');
+        return;
       }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify({
+        id: student.student_id || student.id,
+        student_id: student.student_id || student.id,
+        full_name: student.full_name || student.name || '',
+        email: student.email
+      }));
+      localStorage.setItem('studentId', String(student.student_id || student.id));
+      localStorage.setItem('userId', String(student.student_id || student.id));
+      localStorage.setItem('email', student.email || '');
+
+      navigate('/dashboard');
     } catch (err) {
-      setError('Network error. Please try again later.');
+      setError(err?.response?.data?.message || 'Network error. Please try again later.');
     }
   };
 
