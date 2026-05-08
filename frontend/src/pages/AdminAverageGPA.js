@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+
 const AdminAverageGPA = () => {
-  const [avgData, setAvgData] = useState(null); 
+  const [avgData, setAvgData] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -22,34 +23,39 @@ const AdminAverageGPA = () => {
         setLoading(false);
       }
     };
-
     fetchAvg();
   }, []);
 
-  if (loading) return <p>Loading admin data...</p>;
+  if (loading) return <div className="loading">Loading admin data</div>;
 
   return (
-    <div>
-      <div className="nav-bar">
-        <Link to="/dashboard">Back to Dashboard</Link>
-      </div>
+    <div className="page-container">
+      <Link className="back-btn" to="/dashboard">← Dashboard</Link>
 
-      <h3>This shows the average CGPA calculated across all students who have at least one graded course.</h3>
+      <div className="page-header">
+        <h1 className="page-title">Admin Analytics</h1>
+        <p className="description">Overview of academic performance across all students.</p>
+      </div>
 
       {error && <p className="error">{error}</p>}
 
       {avgData ? (
         <div className="card">
-          <h3>Overall Average CGPA</h3>
-          <p style={{ fontSize: '3em', fontWeight: 'bold', margin: '10px 0' }}>
-            {avgData.overall_avg_cgpa ?? 'N/A'}
-          </p>
-          <p style={{ color: '#555' }}>
-            This is the weighted average across all students and all their graded courses.
-          </p>
+          <div className="admin-highlight">
+            <p className="gpa-label">Overall Average CGPA</p>
+            <p className="gpa-number">{avgData.overall_avg_cgpa ?? 'N/A'}</p>
+            <p className="description" style={{ marginBottom: 0, marginTop: 10 }}>
+              Weighted average across all graded courses from all students.
+            </p>
+          </div>
         </div>
       ) : (
-        <p>No data available. This means no student has any graded courses yet.</p>
+        <div className="card">
+          <div className="empty-state">
+            <span className="emoji">📊</span>
+            No data available yet.
+          </div>
+        </div>
       )}
     </div>
   );
