@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+
 const IncompleteCourses = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const studentId = user.student_id;
@@ -28,37 +29,45 @@ const IncompleteCourses = () => {
         setLoading(false);
       }
     };
-
     if (studentId) fetchCourses();
   }, [studentId]);
 
-  if (loading) return <p>Loading incomplete courses...</p>;
+  if (loading) return <div className="loading">Loading courses</div>;
 
   return (
-    <div>
-      <div className="nav-bar">
-        <Link to="/course-grades">Go to Grades Report</Link>
-      </div>
-    <div className="nav-bar">
-         <Link to="/dashboard">Back to Dashboard</Link>
-      </div>
+    <div className="page-container">
+      <Link className="back-btn" to="/dashboard">← Dashboard</Link>
+      <Link className="back-btn" to="/course-grades">← Grades Report</Link>
 
-      <h2>Courses Without Grades</h2>
-      <p>These courses have no grade recorded yet. Click "Enter Grade" to add one.</p>
+      <div className="page-header">
+        <h1 className="page-title">Courses Without Grades</h1>
+        <p className="description">
+          These courses don't have a grade recorded yet. Click "Enter Grade" to add one.
+        </p>
+      </div>
 
       {error && <p className="error">{error}</p>}
 
       {courses.length === 0 ? (
-        <p>All courses have grades recorded. Great job!</p>
+        <div className="card">
+          <div className="empty-state">
+            <span className="emoji">✅</span>
+            All courses have grades recorded. Great job!
+          </div>
+        </div>
       ) : (
         courses.map((course) => (
-          <div key={course.course_id} className="card flex-between">
+          <div className="course-card" key={course.course_id}>
             <div>
-              <strong>{course.course_name} ({course.course_code})</strong>
-              <p style={{ margin: '4px 0' }}>
-                Semester: {course.semester_name} &nbsp;|&nbsp;
-                Credits: {course.credit_hours} &nbsp;|&nbsp;
-                Instructor: {course.instructor_name || 'N/A'}
+              <strong>{course.course_name}</strong>
+              <span style={{ marginLeft: 8 }}>
+                <code style={{ fontSize: '0.82rem', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 4 }}>
+                  {course.course_code}
+                </code>
+              </span>
+              <p className="meta">
+                {course.semester_name} &nbsp;·&nbsp; {course.credit_hours} credits
+                {course.instructor_name ? ` · ${course.instructor_name}` : ''}
               </p>
             </div>
             <button onClick={() => navigate(`/courses/${course.course_id}/grade`)}>
