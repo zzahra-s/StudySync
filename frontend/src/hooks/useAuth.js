@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-
 export default function useAuth() {
   const token = localStorage.getItem('token');
   const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -19,5 +17,5 @@ export default function useAuth() {
     name: storedUser.full_name || storedUser.name || ''
   };
 
-  return useMemo(() => ({ token, user }), [token, normalizedId, user.email, user.name]);
+  return { token, user };
 }
