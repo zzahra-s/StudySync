@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import useAuth from '../hooks/useAuth';
 import api from '../services/api';
 
@@ -7,6 +7,8 @@ function DeadlinesPage() {
   const studentId = user?.studentId;
 
   const [deadlines, setDeadlines] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -14,6 +16,7 @@ function DeadlinesPage() {
   const [editingDeadline, setEditingDeadline] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
+    description: '',
     dueDate: '',
     status: 'Pending',
     courseId: ''
@@ -24,7 +27,17 @@ function DeadlinesPage() {
     return String(value).split('T')[0];
   };
 
-  const fetchDeadlines = async () => {
+  const fetchCourses = useCallback(async () => {
+    if (!studentId) return;
+    try {
+      const response = await api.get(`/students/${studentId}/course-options`);
+      setCourses(Array.isArray(response.data) ? response.data : []);
+    } catch {
+      setCourses([]);
+    }
+  }, [studentId]);
+
+  const fetchDeadlines = useCallback(async () => {
     if (!studentId) return;
 
     setLoading(true);
@@ -34,6 +47,9 @@ function DeadlinesPage() {
       if (filterStatus) {
         url += `?status=${encodeURIComponent(filterStatus)}`;
       }
+      if (selectedCourseId) {
+        url += `${filterStatus ? '&' : '?'}courseId=${encodeURIComponent(selectedCourseId)}`;
+      }
       const response = await api.get(url);
       setDeadlines(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
@@ -42,14 +58,18 @@ function DeadlinesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId, filterStatus, selectedCourseId]);
+
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
 
   useEffect(() => {
     fetchDeadlines();
-  }, [studentId, filterStatus]);
+  }, [fetchDeadlines]);
 
   const resetForm = () => {
-    setFormData({ title: '', dueDate: '', status: 'Pending', courseId: '' });
+    setFormData({ title: '', description: '', dueDate: '', status: 'Pending', courseId: '' });
     setEditingDeadline(null);
   };
 
@@ -62,6 +82,7 @@ function DeadlinesPage() {
     setEditingDeadline(deadline);
     setFormData({
       title: deadline.title || '',
+      description: deadline.description || '',
       dueDate: normalizeDate(deadline.dueDate || deadline.due_date),
       status: deadline.status || 'Pending',
       courseId: String(deadline.courseId || deadline.course_id || '')
@@ -89,9 +110,15 @@ function DeadlinesPage() {
     e.preventDefault();
     setError('');
 
+    if (!formData.courseId) {
+      setError('Please select a course.');
+      return;
+    }
+
     try {
       const payload = {
         title: formData.title,
+        description: formData.description,
         due_date: formData.dueDate,
         status: formData.status,
         course_id: formData.courseId
@@ -120,8 +147,26 @@ function DeadlinesPage() {
   ];
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Deadlines</h1>
+    <div className="page-container">
+      <h1 className="page-title">Deadlines</h1>
+      <p className="description">Track your course deadlines and keep tasks in sync.</p>
+
+      <div className="card">
+      <div className="form-group">
+        <label htmlFor="deadlineCourseFilter">Select Course</label>
+        <select
+          id="deadlineCourseFilter"
+          value={selectedCourseId}
+          onChange={(e) => setSelectedCourseId(e.target.value)}
+        >
+          <option value="">Select Course</option>
+          {courses.map((course) => (
+            <option key={course.id} value={course.id}>
+              {course.courseName} ({course.courseCode})
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
         {filterButtons.map((button) => (
@@ -129,12 +174,7 @@ function DeadlinesPage() {
             key={button.label}
             type="button"
             onClick={() => setFilterStatus(button.value)}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #ccc',
-              backgroundColor: filterStatus === button.value ? '#e7f0ff' : '#fff',
-              cursor: 'pointer'
-            }}
+            className={`deadline-filter-btn ${filterStatus === button.value ? 'is-active' : ''}`}
           >
             {button.label}
           </button>
@@ -149,9 +189,9 @@ function DeadlinesPage() {
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={{ border: '1px solid #ddd', padding: '12px', marginBottom: '12px' }}>
-          <div style={{ marginBottom: '8px' }}>
-            <label htmlFor="title">Title: </label>
+        <form onSubmit={handleSubmit} className="card deadline-form">
+          <div className="form-group">
+            <label htmlFor="title">Title</label>
             <input
               id="title"
               name="title"
@@ -161,8 +201,29 @@ function DeadlinesPage() {
               required
             />
           </div>
-          <div style={{ marginBottom: '8px' }}>
-            <label htmlFor="dueDate">Due Date: </label>
+          <div className="form-group">
+            <label htmlFor="description">Description</label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleFormChange}
+              rows="3"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="courseId">Select Course</label>
+            <select id="courseId" name="courseId" value={formData.courseId} onChange={handleFormChange} required>
+              <option value="">Select Course</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.courseName} ({course.courseCode})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label htmlFor="dueDate">Due Date</label>
             <input
               id="dueDate"
               name="dueDate"
@@ -172,35 +233,25 @@ function DeadlinesPage() {
               required
             />
           </div>
-          <div style={{ marginBottom: '8px' }}>
-            <label htmlFor="status">Status: </label>
+          <div className="form-group">
+            <label htmlFor="status">Status</label>
             <select id="status" name="status" value={formData.status} onChange={handleFormChange}>
               <option value="Pending">Pending</option>
               <option value="Completed">Completed</option>
             </select>
           </div>
-          <div style={{ marginBottom: '8px' }}>
-            <label htmlFor="courseId">Course ID: </label>
-            <input
-              id="courseId"
-              name="courseId"
-              type="text"
-              value={formData.courseId}
-              onChange={handleFormChange}
-              required
-            />
-          </div>
           <button type="submit">{editingDeadline ? 'Update Deadline' : 'Create Deadline'}</button>
         </form>
       )}
 
-      <div>
+      <div className="deadline-grid">
         {deadlines.length === 0 && !loading ? (
-          <p>No deadlines found.</p>
+          <p className="empty-state">No deadlines found.</p>
         ) : (
           deadlines.map((deadline) => (
-            <div key={deadline.id} style={{ border: '1px solid #ddd', padding: '12px', marginBottom: '10px' }}>
-              <p><strong>Title:</strong> {deadline.title}</p>
+            <div key={deadline.id} className="deadline-card">
+              <p><strong>{deadline.title}</strong></p>
+              <p>{deadline.description || 'No description added.'}</p>
               <p><strong>Course:</strong> {deadline.course || deadline.courseName || 'N/A'}</p>
               <p><strong>Due Date:</strong> {normalizeDate(deadline.dueDate || deadline.due_date)}</p>
               <p><strong>Status:</strong> {deadline.status}</p>
@@ -213,6 +264,7 @@ function DeadlinesPage() {
             </div>
           ))
         )}
+      </div>
       </div>
     </div>
   );
