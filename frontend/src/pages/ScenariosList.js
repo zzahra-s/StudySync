@@ -11,8 +11,8 @@ const ScenariosList = () => {
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-
   const [deleteTarget, setDeleteTarget] = useState(null);
+
   const fetchScenarios = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -34,6 +34,7 @@ const ScenariosList = () => {
   useEffect(() => {
     if (studentId) fetchScenarios();
   }, [studentId, fetchScenarios]);
+
   const handleCreate = async (e) => {
     e.preventDefault();
     setError('');
@@ -45,7 +46,7 @@ const ScenariosList = () => {
       const data = await res.json();
       if (res.ok) {
         setNewName('');
-        fetchScenarios(); 
+        fetchScenarios();
       } else {
         setError(data.message || 'Failed to create scenario.');
       }
@@ -58,9 +59,10 @@ const ScenariosList = () => {
     if (!deleteTarget) return;
     setError('');
     try {
-      const res = await fetchWithToken(`http://localhost:5001/api/scenarios/${deleteTarget.scenario_id}`, {
-        method: 'DELETE',
-      });
+      const res = await fetchWithToken(
+        `http://localhost:5001/api/scenarios/${deleteTarget.scenario_id}`,
+        { method: 'DELETE' }
+      );
       if (res.ok) {
         setDeleteTarget(null);
         fetchScenarios();
@@ -75,27 +77,29 @@ const ScenariosList = () => {
     }
   };
 
-  if (loading) return <p>Loading scenarios...</p>;
+  if (loading) return <div className="loading">Loading scenarios</div>;
 
   return (
-    <div>
+    <div className="page-container">
       <div className="nav-bar">
-        <Link to="/gpa">Back to GPA Dashboard</Link>
+        <Link to="/gpa">← GPA Dashboard</Link>
+        <Link to="/dashboard">Dashboard</Link>
       </div>
 
-      <h2>GPA Scenarios</h2>
-      <p>
-        Scenarios let you pick expected grades for courses and see what GPA you could achieve.
-      </p>
+      <div className="page-header">
+        <h1 className="page-title">GPA Scenarios</h1>
+        <p className="description">
+          Pick expected grades for your courses and see what GPA you could achieve.
+        </p>
+      </div>
 
       {error && <p className="error">{error}</p>}
 
-      {/* create new */}
       <div className="card">
         <h3>Create New Scenario</h3>
         <form onSubmit={handleCreate}>
           <div className="form-group">
-            <label>Scenario Name:</label>
+            <label>Scenario Name</label>
             <input
               type="text"
               placeholder='e.g. "Best Case Spring 2025"'
@@ -108,26 +112,25 @@ const ScenariosList = () => {
         </form>
       </div>
 
-      {/* existing ones*/}
       {scenarios.length === 0 ? (
-        <p>No scenarios yet. Create one above!</p>
+        <div className="card">
+          <div className="empty-state">
+            <span className="emoji">🔮</span>
+            No scenarios yet. Create one above to get started!
+          </div>
+        </div>
       ) : (
         scenarios.map((s) => (
-          <div key={s.scenario_id} className="card flex-between">
+          <div key={s.scenario_id} className="scenario-card">
             <div>
               <strong>{s.scenario_name}</strong>
-              <p style={{ fontSize: '0.85em', color: '#666' }}>
-                Created: {new Date(s.created_at).toLocaleDateString()}
-              </p>
+              <p className="meta">Created {new Date(s.created_at).toLocaleDateString()}</p>
             </div>
-            <div>
+            <div className="actions">
               <button onClick={() => navigate(`/scenarios/${s.scenario_id}`)}>
                 View / Edit
               </button>
-              <button
-                onClick={() => setDeleteTarget(s)}
-                style={{ background: '#dc3545', marginLeft: '10px' }}
-              >
+              <button className="btn-danger" onClick={() => setDeleteTarget(s)}>
                 Delete
               </button>
             </div>
@@ -135,40 +138,27 @@ const ScenariosList = () => {
         ))
       )}
 
-      {/* delete confirm */}
       {deleteTarget && (
-        <div style={overlayStyle}>
-          <div style={modalStyle}>
+        <div className="modal-overlay">
+          <div className="modal-box">
             <h3>Delete Scenario?</h3>
             <p>
               Are you sure you want to delete <strong>{deleteTarget.scenario_name}</strong>?
               This cannot be undone.
             </p>
-            <button onClick={handleDeleteConfirm} style={{ background: '#dc3545' }}>
-              Yes, Delete
-            </button>
-            <button
-              onClick={() => setDeleteTarget(null)}
-              style={{ background: '#6c757d', marginLeft: '10px' }}
-            >
-              Cancel
-            </button>
+            <div className="modal-actions">
+              <button className="btn-danger" onClick={handleDeleteConfirm}>
+                Yes, Delete
+              </button>
+              <button className="btn-secondary" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
-};
-
-const overlayStyle = {
-  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-  background: 'rgba(0,0,0,0.5)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  zIndex: 1000,
-};
-const modalStyle = {
-  background: '#fff', padding: '30px', borderRadius: '8px',
-  maxWidth: '400px', width: '90%',
 };
 
 export default ScenariosList;
