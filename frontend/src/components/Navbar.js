@@ -70,7 +70,8 @@ const Navbar = () => {
         }} 
         onClick={() => navigate('/dashboard')}
       >
-        📚 StudySync
+        <img src="/logo.png" alt="StudySync Logo" style={{ height: '55px', width: 'auto', objectFit: 'contain', transition: 'transform 0.3s ease' }} className="nav-logo" />
+        <span style={{ fontSize: '1.4rem', letterSpacing: '-0.5px' }}>StudySync</span>
       </div>
       <div style={styles.linkGroup}>
         <Link to="/dashboard" style={styles.navLink}>Dashboard</Link>
@@ -81,6 +82,11 @@ const Navbar = () => {
         <Link to="/profile" style={styles.navLink}>Profile</Link>
         <button type="button" onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
       </div>
+      <style>{`
+        .nav-logo:hover {
+          transform: scale(1.05);
+        }
+      `}</style>
     </nav>
   );
 };
