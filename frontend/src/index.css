@@ -427,6 +427,142 @@ button.btn-secondary:hover {
   margin-bottom: 12px;
 }
 
+.text-muted {
+  color: var(--text-muted);
+}
+
+.materials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.material-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+
+.material-card h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.material-card p {
+  margin: 6px 0;
+  font-size: 0.9rem;
+}
+
+.material-card a {
+  color: var(--indigo);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.material-card a:hover {
+  text-decoration: underline;
+}
+
+.weightage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.deadline-form {
+  margin-top: 12px;
+  margin-bottom: 14px;
+}
+
+.deadline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.deadline-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+
+.deadline-card p {
+  margin: 6px 0;
+}
+
+.task-input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.task-input-row input {
+  flex: 1;
+  min-width: 180px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.93rem;
+  padding: 9px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.task-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.task-column {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.task-column h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.task-item button {
+  margin-left: 6px;
+}
+
+.deadline-filter-btn {
+  background: #fff;
+  color: #111;
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+}
+
+.deadline-filter-btn:hover {
+  background: #f3f4f6;
+  color: #111;
+  box-shadow: none;
+}
+
+.deadline-filter-btn.is-active {
+  background: var(--indigo-light);
+  color: #111;
+  border-color: #c7d2fe;
+}
+
 .course-card {
   background: var(--surface);
   border: 1px solid var(--border);
