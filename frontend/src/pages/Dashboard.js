@@ -60,7 +60,10 @@ const Dashboard = () => {
   return (
     <div className="page-container" style={{ textAlign: 'center' }}>
       <header className="page-header" style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '3rem', fontWeight: '800', marginBottom: '10px', color: '#111' }}>📚 StudySync</h1>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', marginBottom: '30px' }}>
+          <img src="/logo.png" alt="StudySync Logo" style={{ height: '180px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))' }} />
+          <h1 style={{ fontSize: '3.5rem', fontWeight: '900', margin: 0, color: '#111', letterSpacing: '-1px' }}>StudySync</h1>
+        </div>
         <h2 className="page-title" style={{ fontSize: '1.5rem', fontWeight: '500', color: '#666' }}>
           Welcome back, {user.full_name || 'Student'}!
         </h2>
