@@ -39,8 +39,9 @@ const Login = () => {
   };
 
   return (
-    <div>
-      <h2>Login</h2>
+    <div style={{ maxWidth: '500px', margin: '60px auto', textAlign: 'center' }}>
+      <img src="/logo.png" alt="StudySync Logo" style={{ height: '220px', width: 'auto', marginBottom: '30px', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.12))' }} />
+      <h2 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '30px' }}>Login to StudySync</h2>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleLogin}>
         <div className="form-group">
