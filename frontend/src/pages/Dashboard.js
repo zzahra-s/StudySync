@@ -22,7 +22,7 @@ const Dashboard = () => {
         <button onClick={handleLogout} style={{ background: '#dc3545', margin: 0 }}>Logout</button>
       </div>
 
-      <h2>Welcome, {user.name || 'Student'}!</h2>
+      <h2>Welcome, {user.full_name || user.name || 'Student'}!</h2>
       
       <div className="card">
         <h3>Manage Your Profile</h3>
