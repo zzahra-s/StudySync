@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+
 const CourseGradesReport = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const studentId = user.student_id;
@@ -25,49 +26,62 @@ const CourseGradesReport = () => {
         setLoading(false);
       }
     };
-
     if (studentId) fetchGrades();
   }, [studentId]);
 
-  if (loading) return <p>Loading course grades...</p>;
+  if (loading) return <div className="loading">Loading grades</div>;
+
+  const gradeColor = (grade) => {
+    if (grade === 'A') return 'badge badge-green';
+    if (grade === 'F') return 'badge badge-red';
+    return 'badge badge-indigo';
+  };
 
   return (
-    <div>
+    <div className="page-container">
       <div className="nav-bar">
-        <Link to="/dashboard">Back to Dashboard</Link>
-        <Link to="/incomplete-courses" style={{ marginLeft: '15px' }}>Incomplete Courses</Link>
+        <Link to="/dashboard">← Dashboard</Link>
+        <Link to="/incomplete-courses">Incomplete Courses</Link>
       </div>
 
-      <h2>Course Grades Report</h2>
+      <div className="page-header">
+        <h1 className="page-title">Course Grades</h1>
+        <p className="description">A summary of all your graded courses across every semester.</p>
+      </div>
 
       {error && <p className="error">{error}</p>}
 
       {grades.length === 0 ? (
-        <p>No graded courses found. Go to Semesters → Courses to enter grades.</p>
-      ) : (
         <div className="card">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="empty-state">
+            <span className="emoji">📝</span>
+            No graded courses found. Go to Semesters → Courses to enter grades.
+          </div>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <table>
             <thead>
               <tr>
-                <th style={thStyle}>Semester</th>
-                <th style={thStyle}>Course Code</th>
-                <th style={thStyle}>Course Name</th>
-                <th style={thStyle}>Credits</th>
-                <th style={thStyle}>Grade</th>
-                <th style={thStyle}>Grade Points</th>
-                <th style={thStyle}>Comments</th>
+                <th>Semester</th>
+                <th>Code</th>
+                <th>Course Name</th>
+                <th>Credits</th>
+                <th>Grade</th>
+                <th>Points</th>
+                <th>Comments</th>
               </tr>
             </thead>
             <tbody>
               {grades.map((row, index) => (
                 <tr key={index}>
-                  <td style={tdStyle}>{row.semester_name}</td>
-                  <td style={tdStyle}>{row.course_code}</td>
-                  <td style={tdStyle}>{row.course_name}</td>
-                  <td style={tdStyle}>{row.credit_hours}</td>
-                  <td style={tdStyle}><strong>{row.letter_grade}</strong></td>
-                  <td style={tdStyle}>{row.grade_points}</td>
-                  <td style={tdStyle}>{row.comments || '—'}</td>
+                  <td>{row.semester_name}</td>
+                  <td><code style={{ fontSize: '0.85rem' }}>{row.course_code}</code></td>
+                  <td>{row.course_name}</td>
+                  <td>{row.credit_hours}</td>
+                  <td><span className={gradeColor(row.letter_grade)}>{row.letter_grade}</span></td>
+                  <td>{row.grade_points}</td>
+                  <td style={{ color: '#6b7280', fontSize: '0.85rem' }}>{row.comments || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -77,8 +91,5 @@ const CourseGradesReport = () => {
     </div>
   );
 };
-
-const thStyle = { borderBottom: '2px solid #ccc', padding: '8px', textAlign: 'left' };
-const tdStyle = { borderBottom: '1px solid #eee', padding: '8px' };
 
 export default CourseGradesReport;
