@@ -18,6 +18,9 @@ export const fetchWithToken = async (url, options = {}) => {
   if (response.status === 401) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('studentId');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('email');
     window.location.href = '/login'; // Redirect to login on unauthorized
   }
 
