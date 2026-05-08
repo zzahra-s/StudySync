@@ -14,15 +14,13 @@ const GradeEntry = () => {
     const fetchGrade = async () => {
       try {
         const response = await fetchWithToken(`http://localhost:5001/api/courses/${courseId}/grade`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data && (data.grade_id || data.id)) {
-            setExistingGradeId(data.grade_id || data.id);
-            setGrade(data.letter_grade || data.grade || '');
-          }
+        const data = await response.json();
+        if (response.ok && data) {
+          setExistingGradeId(data.grade_id || data.id);
+          setGrade(data.letter_grade || data.grade || '');
         }
       } catch (err) {
-        setError('Error fetching existing grade.');
+        console.error('Error fetching grade:', err);
       }
     };
     fetchGrade();
