@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require('../config/database');
+const { sql, poolPromise } = require('../config/Database');
 
 class Student {
     static async create(studentData) {

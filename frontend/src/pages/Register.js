@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 
 const Register = () => {
   const [name, setName] = useState('');
-  const [rollNumber, setRollNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,7 +16,7 @@ const Register = () => {
       const response = await fetch('http://localhost:5001/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: name, roll_number: rollNumber, email, password })
+        body: JSON.stringify({ name, email, password })
       });
 
       const data = await response.json();
@@ -38,12 +37,8 @@ const Register = () => {
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleRegister}>
         <div className="form-group">
-          <label>Name (Full Name):</label>
+          <label>Name:</label>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <div className="form-group">
-          <label>Roll Number:</label>
-          <input type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)} required />
         </div>
         <div className="form-group">
           <label>Email:</label>
