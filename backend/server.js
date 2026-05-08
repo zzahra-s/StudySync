@@ -4,15 +4,21 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
 const helmet = require('helmet');
-const jwt = require('jsonwebtoken');
 const { getConnectionPool } = require('./db');
+const authRoutes = require('./routes/Authroutes');
+const studentRoutes = require('./routes/Studentroutes');
+const semesterRoutes = require('./routes/Semesterroutes');
+const courseRoutes = require('./routes/Courseroutes');
+const gradeRoutes = require('./routes/Graderoutes');
+const gpaRoutes = require('./routes/Gparoutes');
+const scenarioRoutes = require('./routes/Scenarioroutes');
+const reportRoutes = require('./routes/Reportroutes');
 const deadlinesRoutes = require('./routes/deadlines');
-const studyPlannerRoutes = require('./routes/study-planner');
-const studyHoursRoutes = require('./routes/study-hours');
-const topCoursesRoutes = require('./routes/top-courses');
-const materialsRoutes = require('./routes/materials');
-const booksRoutes = require('./routes/books');
 const taskProgressRoutes = require('./routes/task-progress');
+const bookMaterialRoutes = require('./routes/book-material');
+const courseMaterialRoutes = require('./routes/course-material');
+const taskManagerRoutes = require('./routes/task-manager');
+const courseOptionsRoutes = require('./routes/course-options');
 
 dotenv.config();
 
@@ -29,43 +35,20 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend working' });
 });
 
-app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required' });
-  }
-
-  const dummyUser = {
-    id: '1',
-    email,
-    name: 'Test Student'
-  };
-
-  const token = jwt.sign(
-    { userId: dummyUser.id, email: dummyUser.email },
-    process.env.JWT_SECRET || 'mySuperSecretKey123',
-    { expiresIn: '1h' }
-  );
-
-  res.json({ token, user: dummyUser });
-});
-
-app.get('/api/students/:id', (req, res) => {
-  res.json({
-    id: req.params.id,
-    name: 'Test Student',
-    email: 'student@example.com'
-  });
-});
-
+app.use('/api/auth', authRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api', semesterRoutes);
+app.use('/api', courseRoutes);
+app.use('/api', gradeRoutes);
+app.use('/api', gpaRoutes);
+app.use('/api', scenarioRoutes);
+app.use('/api', reportRoutes);
 app.use('/api', deadlinesRoutes);
-app.use('/api', studyPlannerRoutes);
-app.use('/api', studyHoursRoutes);
-app.use('/api', topCoursesRoutes);
-app.use('/api', materialsRoutes);
-app.use('/api', booksRoutes);
 app.use('/api', taskProgressRoutes);
+app.use('/api', bookMaterialRoutes);
+app.use('/api', courseMaterialRoutes);
+app.use('/api', taskManagerRoutes);
+app.use('/api', courseOptionsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
