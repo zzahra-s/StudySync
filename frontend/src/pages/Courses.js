@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
 
 const Courses = () => {
@@ -12,7 +12,7 @@ const Courses = () => {
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
 
-  const fetchCourses = async () => {
+  const fetchCourses = React.useCallback(async () => {
     try {
       const response = await fetchWithToken(`http://localhost:5001/api/semesters/${semesterId}/courses`);
       if (response.ok) {
@@ -24,11 +24,11 @@ const Courses = () => {
     } catch (err) {
       setError('Network error.');
     }
-  };
+  }, [semesterId]);
 
   useEffect(() => {
     fetchCourses();
-  }, [semesterId]);
+  }, [fetchCourses]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -95,10 +95,7 @@ const Courses = () => {
   };
 
   return (
-    <div>
-      <div className="nav-bar">
-        <Link to="/semesters">Back to Semesters</Link>
-      </div>
+    <div className="page-container">
 
       <h2>Courses</h2>
       {error && <p className="error">{error}</p>}
