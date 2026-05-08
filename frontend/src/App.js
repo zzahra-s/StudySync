@@ -9,7 +9,6 @@ import Semesters from './pages/Semesters';
 import Courses from './pages/Courses';
 import GradeEntry from './pages/GradeEntry';
 import DeadlinesPage from './pages/DeadlinesPage';
-import StudyPlannerPage from './pages/StudyPlannerPage';
 import CourseMaterialsPage from './pages/CourseMaterialsPage';
 import BooksPage from './pages/BooksPage';
 import TaskProgressDashboard from './pages/TaskProgressDashboard';
@@ -19,6 +18,7 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     localStorage.removeItem('studentId');
     localStorage.removeItem('userId');
     localStorage.removeItem('email');
@@ -71,7 +71,6 @@ function App() {
           <div style={navbarStyles.linkGroup}>
             <Link to="/dashboard" style={navbarStyles.navLink}>Dashboard</Link>
             <Link to="/deadlines" style={navbarStyles.navLink}>Deadlines</Link>
-            <Link to="/study-planner" style={navbarStyles.navLink}>Planner</Link>
             <Link to="/materials" style={navbarStyles.navLink}>Materials</Link>
             <Link to="/books" style={navbarStyles.navLink}>Books</Link>
             <Link to="/progress" style={navbarStyles.navLink}>Progress</Link>
@@ -92,7 +91,6 @@ function App() {
           <Route path="/semesters/:semesterId/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
           <Route path="/courses/:courseId/grade" element={<ProtectedRoute><GradeEntry /></ProtectedRoute>} />
           <Route path="/deadlines" element={<ProtectedRoute><DeadlinesPage /></ProtectedRoute>} />
-          <Route path="/study-planner" element={<ProtectedRoute><StudyPlannerPage /></ProtectedRoute>} />
           <Route path="/materials" element={<ProtectedRoute><CourseMaterialsPage /></ProtectedRoute>} />
           <Route path="/books" element={<ProtectedRoute><BooksPage /></ProtectedRoute>} />
           <Route path="/progress" element={<ProtectedRoute><TaskProgressDashboard /></ProtectedRoute>} />
