@@ -11,12 +11,12 @@ const Semesters = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const fetchSemesters = useCallback(async () => {
+  const fetchSemesters = async () => {
     if (!studentId) return;
     try {
       const response = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/semesters`);
+      const data = await response.json();
       if (response.ok) {
-        const data = await response.json();
         setSemesters(data);
       } else {
         setError('Failed to load semesters.');
@@ -24,11 +24,11 @@ const Semesters = () => {
     } catch (err) {
       setError('Network error.');
     }
-  }, [studentId]);
+  };
 
   useEffect(() => {
     fetchSemesters();
-  }, [fetchSemesters]);
+  }, [studentId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
