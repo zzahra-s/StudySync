@@ -44,10 +44,10 @@ const login = async (req, res) => {
             return res.status(400).json({ message: 'Email and password are required' });
         }
 
-        // Find student
-        const student = await Student.findByEmail(email);
+        // Find student by email or roll number
+        const student = await Student.findForLogin(email);
         if (!student) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Can’t login with these credentials' });
         }
 
         // Verify password. Support legacy plain-text seeded rows too.
