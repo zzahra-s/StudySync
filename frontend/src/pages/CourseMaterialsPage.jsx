@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import useAuth from '../hooks/useAuth';
 import api from '../services/api';
 
@@ -8,174 +8,139 @@ function CourseMaterialsPage() {
 
   const [courses, setCourses] = useState([]);
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [materials, setMaterials] = useState([]);
+  const [weightages, setWeightages] = useState({
+    quizzesPercentage: 0,
+    assignmentsPercentage: 0,
+    midtermPercentage: 0,
+    finalPercentage: 0
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [uploadFile, setUploadFile] = useState(null);
-  const [uploadDescription, setUploadDescription] = useState('');
+  const [message, setMessage] = useState('');
 
-  const formatDate = (value) => {
-    if (!value) return 'N/A';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toISOString().split('T')[0];
-  };
-
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     if (!studentId) return;
 
     try {
-      const response = await api.get(`/students/${studentId}/courses`);
+      const response = await api.get(`/students/${studentId}/course-options`);
       const list = Array.isArray(response.data) ? response.data : [];
       setCourses(list);
-      if (list.length > 0) {
-        const defaultId = list[0].id || list[0].course_id;
-        setSelectedCourseId(String(defaultId || ''));
-      }
     } catch {
       setCourses([]);
     }
-  };
+  }, [studentId]);
 
-  const fetchMaterials = async (courseId) => {
+  const fetchWeightages = useCallback(async (courseId) => {
     if (!courseId) {
-      setMaterials([]);
+      setWeightages({
+        quizzesPercentage: 0,
+        assignmentsPercentage: 0,
+        midtermPercentage: 0,
+        finalPercentage: 0
+      });
       return;
     }
 
     setLoading(true);
     setError('');
+    setMessage('');
     try {
-      const response = await api.get(`/courses/${courseId}/materials`);
-      const list = Array.isArray(response.data) ? response.data : [];
-      setMaterials(list);
+      const response = await api.get(`/courses/${courseId}/course-material`);
+      setWeightages({
+        quizzesPercentage: Number(response.data.quizzesPercentage || 0),
+        assignmentsPercentage: Number(response.data.assignmentsPercentage || 0),
+        midtermPercentage: Number(response.data.midtermPercentage || 0),
+        finalPercentage: Number(response.data.finalPercentage || 0)
+      });
     } catch (err) {
-      setMaterials([]);
-      setError(err?.response?.data?.message || 'Failed to load materials.');
+      setError(err?.response?.data?.message || 'Failed to load course material.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCourses();
-  }, [studentId]);
+  }, [fetchCourses]);
 
   useEffect(() => {
-    fetchMaterials(selectedCourseId);
-  }, [selectedCourseId]);
+    fetchWeightages(selectedCourseId);
+  }, [selectedCourseId, fetchWeightages]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this material?')) return;
-
-    try {
-      await api.delete(`/materials/${id}`);
-      fetchMaterials(selectedCourseId);
-    } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to delete material.');
-    }
+  const handleChange = (field, value) => {
+    setWeightages((prev) => ({ ...prev, [field]: Number(value) }));
   };
 
-  const handleUpload = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!uploadFile || !selectedCourseId) {
-      setError('Please select a course and file.');
+    setError('');
+    setMessage('');
+
+    if (!selectedCourseId) {
+      setError('Please select a course first.');
       return;
     }
 
-    setError('');
+    const total = Object.values(weightages).reduce((sum, val) => sum + Number(val || 0), 0);
+    if (total !== 100) {
+      setError('Weightages must add up to 100%.');
+      return;
+    }
 
     try {
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      formData.append('courseId', selectedCourseId);
-      formData.append('description', uploadDescription);
-      await api.post('/materials', formData);
-
-      setUploadFile(null);
-      setUploadDescription('');
-      fetchMaterials(selectedCourseId);
+      await api.put(`/courses/${selectedCourseId}/course-material`, weightages);
+      setMessage('Weightages saved successfully.');
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to upload material.');
+      setError(err?.response?.data?.message || 'Failed to save weightages.');
     }
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Course Materials</h1>
+    <div className="page-container">
+      <h1 className="page-title">Course Material</h1>
+      <p className="description">Set and manage assessment weightages for each course.</p>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label htmlFor="courseSelect">Course: </label>
-        {courses.length > 0 ? (
+      <div className="card">
+        <div className="form-group">
+          <label htmlFor="courseSelect">Select Course</label>
           <select
             id="courseSelect"
             value={selectedCourseId}
             onChange={(e) => setSelectedCourseId(e.target.value)}
           >
-            {courses.map((course) => {
-              const courseId = course.id || course.course_id;
-              return (
-                <option key={courseId} value={courseId}>
-                  {course.course_name || course.courseName || course.name || `Course ${courseId}`}
-                </option>
-              );
-            })}
+            <option value="">Select Course</option>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.courseName} ({course.courseCode})
+              </option>
+            ))}
           </select>
-        ) : (
-          <input
-            type="text"
-            placeholder="Enter course ID"
-            value={selectedCourseId}
-            onChange={(e) => setSelectedCourseId(e.target.value)}
-          />
-        )}
-      </div>
-
-      <form onSubmit={handleUpload} style={{ border: '1px solid #ddd', padding: '12px', marginBottom: '16px' }}>
-        <h3>Upload Material</h3>
-        <div style={{ marginBottom: '8px' }}>
-          <input type="file" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} required />
         </div>
-        <div style={{ marginBottom: '8px' }}>
-          <input
-            type="text"
-            placeholder="Description (optional)"
-            value={uploadDescription}
-            onChange={(e) => setUploadDescription(e.target.value)}
-          />
-        </div>
-        <button type="submit">Upload</button>
-      </form>
 
-      {loading && <p>Loading materials...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      <div>
-        {materials.length === 0 && !loading ? (
-          <p>No materials</p>
-        ) : (
-          materials.map((material) => {
-            const id = material.id || material.material_id;
-            const fileName = material.materialName || material.fileName || material.file_name || 'File';
-            const fileUrl = material.fileUrl || material.url;
-            const uploadedAt = material.uploadedAt || material.uploadDate || material.uploaded_at;
-
-            return (
-              <div key={id} style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '8px' }}>
-                <p><strong>{fileName}</strong></p>
-                <p>Uploaded: {formatDate(uploadedAt)}</p>
-                {fileUrl ? (
-                  <a href={fileUrl} target="_blank" rel="noreferrer">Download</a>
-                ) : (
-                  <span>No download URL</span>
-                )}
-                <div style={{ marginTop: '8px' }}>
-                  <button type="button" onClick={() => handleDelete(id)}>Delete</button>
-                </div>
-              </div>
-            );
-          })
-        )}
+        <form onSubmit={handleSave}>
+          <div className="weightage-grid">
+            <div className="form-group">
+              <label>Quizzes (%)</label>
+              <input type="number" min="0" max="100" value={weightages.quizzesPercentage} onChange={(e) => handleChange('quizzesPercentage', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Assignments (%)</label>
+              <input type="number" min="0" max="100" value={weightages.assignmentsPercentage} onChange={(e) => handleChange('assignmentsPercentage', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Midterm (%)</label>
+              <input type="number" min="0" max="100" value={weightages.midtermPercentage} onChange={(e) => handleChange('midtermPercentage', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Final (%)</label>
+              <input type="number" min="0" max="100" value={weightages.finalPercentage} onChange={(e) => handleChange('finalPercentage', e.target.value)} />
+            </div>
+          </div>
+          {loading && <p>Loading course material...</p>}
+          {error && <p className="error">{error}</p>}
+          {message && <p className="success">{message}</p>}
+          <button type="submit" disabled={!selectedCourseId}>Save Weightages</button>
+        </form>
       </div>
     </div>
   );
