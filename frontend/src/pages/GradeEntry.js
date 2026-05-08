@@ -16,13 +16,9 @@ const GradeEntry = () => {
         const response = await fetchWithToken(`http://localhost:5001/api/courses/${courseId}/grade`);
         if (response.ok) {
           const data = await response.json();
-          // Adjust checks based on whether your API returns array or single object
-          if (data && (data._id || data.id)) {
-            setExistingGradeId(data._id || data.id);
-            setGrade(data.grade);
-          } else if (Array.isArray(data) && data.length > 0) {
-            setExistingGradeId(data[0]._id || data[0].id);
-            setGrade(data[0].grade);
+          if (data && (data.grade_id || data.id)) {
+            setExistingGradeId(data.grade_id || data.id);
+            setGrade(data.letter_grade || data.grade || '');
           }
         }
       } catch (err) {
@@ -41,7 +37,7 @@ const GradeEntry = () => {
       if (existingGradeId) {
         const response = await fetchWithToken(`http://localhost:5001/api/grades/${existingGradeId}`, {
           method: 'PUT',
-          body: JSON.stringify({ grade })
+          body: JSON.stringify({ letter_grade: grade })
         });
         if (response.ok) {
           setMessage('Grade updated successfully!');
@@ -50,9 +46,9 @@ const GradeEntry = () => {
           setError('Failed to update grade.');
         }
       } else {
-        const response = await fetchWithToken('http://localhost:5001/api/grades', {
+        const response = await fetchWithToken(`http://localhost:5001/api/courses/${courseId}/grade`, {
           method: 'POST',
-          body: JSON.stringify({ courseId, grade })
+          body: JSON.stringify({ letter_grade: grade })
         });
         if (response.ok) {
           setMessage('Grade saved successfully!');
