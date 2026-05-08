@@ -10,13 +10,14 @@ const Profile = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const studentId = user.id || user.student_id;
+    if (!studentId) return;
+
     const fetchProfile = async () => {
       try {
-        const id = user.id || user._id;
-        if (!id) return;
-        const response = await fetchWithToken(`http://localhost:5001/api/students/${id}`);
+        const response = await fetchWithToken(`http://localhost:5001/api/students/${studentId}`);
+        const data = await response.json();
         if (response.ok) {
-          const data = await response.json();
           setName(data.full_name || data.name || '');
           setEmail(data.email || '');
         } else {
@@ -27,7 +28,7 @@ const Profile = () => {
       }
     };
     fetchProfile();
-  }, [user.id, user._id]);
+  }, [user]);
 
   const handleSave = async (e) => {
     e.preventDefault();
