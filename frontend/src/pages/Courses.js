@@ -12,11 +12,11 @@ const Courses = () => {
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
 
-  const fetchCourses = React.useCallback(async () => {
+  const fetchCourses = async () => {
     try {
       const response = await fetchWithToken(`http://localhost:5001/api/semesters/${semesterId}/courses`);
+      const data = await response.json();
       if (response.ok) {
-        const data = await response.json();
         setCourses(data);
       } else {
         setError('Failed to load courses.');
@@ -24,11 +24,11 @@ const Courses = () => {
     } catch (err) {
       setError('Network error.');
     }
-  }, [semesterId]);
+  };
 
   useEffect(() => {
     fetchCourses();
-  }, [fetchCourses]);
+  }, [semesterId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
