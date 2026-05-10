@@ -1,0 +1,415 @@
+USE master;
+GO
+DROP DATABASE IF EXISTS StudySync;
+GO
+CREATE DATABASE StudySync;
+GO
+USE StudySync;
+GO
+
+DROP TABLE IF EXISTS TaskManager;
+DROP TABLE IF EXISTS CourseMaterialWeightage;
+DROP TABLE IF EXISTS TopCourses;
+DROP TABLE IF EXISTS TaskProgress;
+DROP TABLE IF EXISTS StudyHours;
+DROP TABLE IF EXISTS StudyPlannerTasks;
+DROP TABLE IF EXISTS ScenarioCourses;
+DROP TABLE IF EXISTS GPAScenarios;
+DROP TABLE IF EXISTS Books;
+DROP TABLE IF EXISTS CourseMaterials;
+DROP TABLE IF EXISTS Deadlines;
+DROP TABLE IF EXISTS Grades;
+DROP TABLE IF EXISTS Courses;
+DROP TABLE IF EXISTS Semesters;
+DROP TABLE IF EXISTS Students;
+DROP TABLE IF EXISTS GradePoints;
+GO
+
+CREATE TABLE GradePoints (
+    letter_grade VARCHAR(2) PRIMARY KEY,
+    grade_points DECIMAL(4,2) NOT NULL
+);
+
+CREATE TABLE Students (
+    student_id INT IDENTITY(1,1) PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    roll_number VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE Semesters (
+    semester_id INT IDENTITY(1,1) PRIMARY KEY,
+    student_id INT NOT NULL,
+    semester_name VARCHAR(50) NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE,
+    UNIQUE (student_id, semester_name)
+);
+
+CREATE TABLE Courses (
+    course_id INT IDENTITY(1,1) PRIMARY KEY,
+    semester_id INT NOT NULL,
+    course_code VARCHAR(20) NOT NULL,
+    course_name VARCHAR(100) NOT NULL,
+    credit_hours DECIMAL(3,1) NOT NULL CHECK (credit_hours > 0),
+    instructor_name VARCHAR(100),
+    FOREIGN KEY (semester_id) REFERENCES Semesters(semester_id) ON DELETE CASCADE,
+    UNIQUE (semester_id, course_code)
+);
+
+CREATE TABLE Grades (
+    grade_id INT IDENTITY(1,1) PRIMARY KEY,
+    course_id INT NOT NULL UNIQUE,
+    letter_grade VARCHAR(2) NOT NULL,
+    comments VARCHAR(500),
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id),
+    FOREIGN KEY (letter_grade) REFERENCES GradePoints(letter_grade)
+);
+
+CREATE TABLE Deadlines (
+    deadline_id INT IDENTITY(1,1) PRIMARY KEY,
+    course_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    due_date DATETIME NOT NULL,
+    status VARCHAR(10) DEFAULT 'Pending' CHECK(status IN ('Pending', 'Completed')),
+    priority VARCHAR(10) DEFAULT 'Medium' CHECK(priority IN ('High', 'Medium', 'Low')),
+    allocated_study_hours DECIMAL(4,1) DEFAULT 0,
+    description VARCHAR(500) NULL,
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id) ON DELETE CASCADE
+);
+
+-- Merged with Materials table (normalization: eliminated duplicate table)
+CREATE TABLE CourseMaterials (
+    material_id INT IDENTITY(1,1) PRIMARY KEY,
+    course_id INT NOT NULL,
+    student_id INT NULL,
+    material_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500),
+    description TEXT NULL,
+    uploaded_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE NO ACTION
+);
+
+-- Merged with BookMaterial table (normalization: eliminated duplicate table)
+CREATE TABLE Books (
+    book_id INT IDENTITY(1,1) PRIMARY KEY,
+    course_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    author VARCHAR(200),
+    isbn VARCHAR(20),
+    description VARCHAR(600) NULL,
+    pdf_link VARCHAR(500) NULL,
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id) ON DELETE CASCADE
+);
+
+CREATE TABLE GPAScenarios (
+    scenario_id INT IDENTITY(1,1) PRIMARY KEY,
+    student_id INT NOT NULL,
+    scenario_name VARCHAR(100) NOT NULL,
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE
+);
+
+CREATE TABLE ScenarioCourses (
+    scenario_id INT NOT NULL,
+    course_id INT NOT NULL,
+    expected_grade VARCHAR(2) NOT NULL,
+    PRIMARY KEY (scenario_id, course_id),
+    FOREIGN KEY (scenario_id) REFERENCES GPAScenarios(scenario_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id) ON DELETE NO ACTION,
+    FOREIGN KEY (expected_grade) REFERENCES GradePoints(letter_grade)
+);
+
+-- Normalization: replaced course VARCHAR with course_id FK
+CREATE TABLE StudyPlannerTasks (
+    task_id INT IDENTITY(1,1) PRIMARY KEY,
+    student_id INT NOT NULL,
+    course_id INT NULL,
+    title VARCHAR(255) NOT NULL,
+    due_date DATE,
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id) ON DELETE SET NULL
+);
+
+-- Normalization: replaced course VARCHAR with course_id FK, removed subject (redundant)
+CREATE TABLE StudyHours (
+    hour_id INT IDENTITY(1,1) PRIMARY KEY,
+    student_id INT NOT NULL,
+    course_id INT NULL,
+    date DATE NOT NULL,
+    hours DECIMAL(4,2) NOT NULL,
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id) ON DELETE SET NULL
+);
+
+-- Normalization: removed percentage (derived value, computed in queries)
+CREATE TABLE TaskProgress (
+    progress_id INT IDENTITY(1,1) PRIMARY KEY,
+    student_id INT NOT NULL,
+    total_tasks INT DEFAULT 0,
+    completed_tasks INT DEFAULT 0,
+    updated_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE,
+    UNIQUE (student_id)
+);
+
+-- Normalization: removed course VARCHAR and grade VARCHAR (both derivable via joins)
+CREATE TABLE TopCourses (
+    top_course_id INT IDENTITY(1,1) PRIMARY KEY,
+    student_id INT NOT NULL,
+    course_id INT,
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id)
+);
+
+CREATE TABLE CourseMaterialWeightage (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    course_id INT NOT NULL UNIQUE,
+    quizzes_percentage INT NOT NULL CHECK (quizzes_percentage BETWEEN 0 AND 100),
+    assignments_percentage INT NOT NULL CHECK (assignments_percentage BETWEEN 0 AND 100),
+    midterm_percentage INT NOT NULL CHECK (midterm_percentage BETWEEN 0 AND 100),
+    final_percentage INT NOT NULL CHECK (final_percentage BETWEEN 0 AND 100),
+    updated_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id) ON DELETE CASCADE
+);
+
+CREATE TABLE TaskManager (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    user_id INT NOT NULL,
+    course_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    status VARCHAR(10) NOT NULL CHECK (status IN ('todo', 'done')),
+    linked_deadline_id INT NULL,
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (user_id) REFERENCES Students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id) ON DELETE NO ACTION,
+    FOREIGN KEY (linked_deadline_id) REFERENCES Deadlines(deadline_id) ON DELETE NO ACTION
+);
+GO
+
+-- ============================================
+-- SAMPLE DATA
+-- ============================================
+
+INSERT INTO GradePoints (letter_grade, grade_points) VALUES
+('A', 4.00), ('A-', 3.67), ('B+', 3.33), ('B', 3.00),
+('B-', 2.67), ('C+', 2.33), ('C', 2.00), ('F', 0.00);
+
+INSERT INTO Students (full_name, roll_number, email, password) VALUES
+('Zahra Saeed', 'L24-2512', 'l242512@gmail.com', 'abcd'),
+('Kashish Fatima', 'L24-2605', 'l242605@gmail.com', 'efgh'),
+('Aliyah Rasheed', 'L24-2544', 'l242544@gmail.com', 'ijkl'),
+('Hamza Ali', 'L24-1111', 'hamza@example.com', 'pass123'),
+('Ayesha Malik', 'L24-2222', 'ayesha@example.com', 'pass456');
+
+INSERT INTO Semesters (student_id, semester_name, start_date, end_date) VALUES
+(1, 'Fall 2023', '2023-08-20', '2023-12-15'),
+(1, 'Spring 2024', '2024-01-10', '2024-05-20'),
+(2, 'Fall 2023', '2023-08-20', '2023-12-15'),
+(3, 'Spring 2024', '2024-01-10', '2024-05-20'),
+(1, 'Fall 2024', '2024-08-20', '2024-12-15'),
+(2, 'Spring 2024', '2024-01-10', '2024-05-20'),
+(3, 'Fall 2023', '2023-08-20', '2023-12-15'),
+(4, 'Fall 2023', '2023-08-20', '2023-12-15'),
+(4, 'Spring 2024', '2024-01-10', '2024-05-20'),
+(5, 'Fall 2023', '2023-08-20', '2023-12-15');
+
+INSERT INTO Courses (semester_id, course_code, course_name, credit_hours, instructor_name) VALUES
+(1, 'CS101', 'Programming Fundamentals', 3.0, 'Dr. Ahmed'),
+(2, 'CS201', 'Data Structures', 3.0, 'Dr. Ahmed'),
+(2, 'CS210', 'Database Systems', 3.0, 'Ms. Fatima'),
+(3, 'MT201', 'Applied Physics', 2.0, 'Dr. Zafar'),
+(4, 'SS102', 'Expository Writing', 2.0, 'Prof. Ali'),
+(5, 'CS102', 'Object Oriented Programming', 3.0, 'Dr. Bilal'),
+(6, 'CS220', 'Operating Systems', 3.0, 'Dr. Bilal'),
+(7, 'EE101', 'Basic Electronics', 3.0, 'Dr. Khalid'),
+(8, 'HS101', 'Communication Skills', 2.0, 'Ms. Sara'),
+(9, 'CS101', 'Programming Fundamentals', 3.0, 'Dr. Ahmed'),
+(10, 'MT101', 'Calculus and Analytical Geometry', 3.0, 'Prof. Khan');
+
+INSERT INTO Grades (course_id, letter_grade, comments) VALUES
+(1, 'A', 'Excellent work'),
+(2, 'B+', 'Solidify with book content'),
+(5, 'A-', 'Solid understanding'),
+(7, 'A-', 'Good grasp of OOP'),
+(8, 'B+', 'Needs improvement'),
+(11, 'B', 'Average performance');
+
+INSERT INTO Deadlines (course_id, title, due_date, status, priority, allocated_study_hours) VALUES
+(3, 'Assignment 1: Linked Lists', '2024-02-15 23:59', 'Pending', 'High', 5.0),
+(4, 'Project Proposal', '2024-02-10 17:00', 'Completed', 'Medium', 2.0),
+(4, 'Final Project', '2024-05-01 23:59', 'Pending', 'High', 15.0),
+(6, 'Essay Draft', '2024-03-01 09:00', 'Pending', 'Low', 3.0),
+(7, 'Lab Report 2', '2024-10-15 23:59', 'Pending', 'Medium', 4.0),
+(8, 'Midterm Exam', '2024-03-20 10:00', 'Pending', 'High', 8.0),
+(9, 'Quiz 1', '2023-09-10 11:00', 'Completed', 'Low', 1.0),
+(10, 'Presentation', '2024-04-05 14:00', 'Pending', 'Medium', 3.0);
+
+INSERT INTO CourseMaterials (course_id, student_id, material_name, file_path) VALUES
+(1, NULL, 'Lecture 1 Slides', '/uploads/cs101/lec1.pdf'),
+(4, NULL, 'SQL Cheat Sheet', '/uploads/cs210/sql_cheat.pdf'),
+(6, NULL, 'Essay Examples', '/uploads/ss102/examples.docx'),
+(7, NULL, 'OOP Lecture Notes', '/uploads/cs102/oop_notes.pdf'),
+(8, NULL, 'OS Slides', '/uploads/cs220/os_slides.pdf'),
+(1, 1, 'Lecture_1_Basics.pdf', '/uploads/student/lec1_basics.pdf'),
+(2, 1, 'Code_Examples.zip', '/uploads/student/code_examples.zip'),
+(4, 2, 'Physics_Lab.pdf', '/uploads/student/physics_lab.pdf'),
+(5, 3, 'Writing_Guide.pdf', '/uploads/student/writing_guide.pdf');
+
+INSERT INTO Books (course_id, title, author, isbn) VALUES
+(1, 'Basics of Programming', 'John Doe', '978-1590282755'),
+(4, 'Database System Concepts', 'Jane Doe', '978-0078022159'),
+(3, 'Data Structures in C++', 'Mike Wazowski', '978-0131986196'),
+(7, 'Object Oriented Programming', 'Bjarne Stroustrup', '978-0321563842'),
+(8, 'Operating Systems Concepts', 'Silberschatz', '978-1119800361');
+
+INSERT INTO GPAScenarios (student_id, scenario_name) VALUES
+(1, 'Best Case Spring 2024'),
+(2, 'What if I get A in Physics?'),
+(4, 'Try for A in all courses'),
+(5, 'Improve CGPA scenario');
+
+INSERT INTO ScenarioCourses (scenario_id, course_id, expected_grade) VALUES
+(1, 3, 'A'),
+(1, 4, 'A-'),
+(2, 5, 'A'),
+(3, 9, 'A'),
+(3, 10, 'A-'),
+(4, 11, 'B+');
+
+INSERT INTO StudyPlannerTasks (student_id, course_id, title, due_date, description, status) VALUES
+(1, 1, 'Read Chapter 5', '2025-04-27', 'Read and take notes', 'pending'),
+(1, 2, 'Complete Problem Set', '2025-05-01', 'Problems 1-20', 'pending'),
+(1, 3, 'Review Notes', '2025-04-27', 'Review lectures', 'completed'),
+(2, 4, 'Physics Lab Report', '2025-05-05', 'Complete lab analysis', 'pending'),
+(3, 5, 'Essay Writing', '2025-04-30', 'Write 1000 words', 'pending');
+
+INSERT INTO StudyHours (student_id, course_id, date, hours) VALUES
+(1, 1, '2025-04-20', 2.5),
+(1, 3, '2025-04-21', 3.0),
+(1, 2, '2025-04-22', 1.5),
+(2, 4, '2025-04-20', 2.0),
+(3, 5, '2025-04-21', 1.5);
+
+INSERT INTO TaskProgress (student_id, total_tasks, completed_tasks) VALUES
+(1, 10, 6),
+(2, 8, 4),
+(3, 12, 8);
+
+INSERT INTO TopCourses (student_id, course_id) VALUES
+(1, 1),
+(1, 2),
+(2, 4),
+(3, 5);
+
+DECLARE @User1 INT = (SELECT TOP 1 student_id FROM Students WHERE email = 'l242512@gmail.com');
+DECLARE @User2 INT = (SELECT TOP 1 student_id FROM Students WHERE email = 'l242605@gmail.com');
+DECLARE @User3 INT = (SELECT TOP 1 student_id FROM Students WHERE email = 'l242544@gmail.com');
+
+INSERT INTO Deadlines (course_id, title, description, due_date, status, priority, allocated_study_hours)
+SELECT c.course_id, 'Quiz Practice Set', 'Revise solved examples and complete practice sheet.', DATEADD(DAY, 5, GETDATE()), 'Pending', 'Medium', 2.0
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM Deadlines d WHERE d.course_id = c.course_id AND d.title = 'Quiz Practice Set');
+
+INSERT INTO Deadlines (course_id, title, description, due_date, status, priority, allocated_study_hours)
+SELECT c.course_id, 'Assignment Submission', 'Finalize assignment report and upload before deadline.', DATEADD(DAY, 10, GETDATE()), 'Pending', 'High', 4.0
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM Deadlines d WHERE d.course_id = c.course_id AND d.title = 'Assignment Submission');
+
+INSERT INTO Deadlines (course_id, title, description, due_date, status, priority, allocated_study_hours)
+SELECT c.course_id, 'Chapter Revision', 'Review key concepts and summarize notes.', DATEADD(DAY, -2, GETDATE()), 'Completed', 'Low', 1.5
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM Deadlines d WHERE d.course_id = c.course_id AND d.title = 'Chapter Revision');
+
+INSERT INTO CourseMaterialWeightage (course_id, quizzes_percentage, assignments_percentage, midterm_percentage, final_percentage)
+SELECT c.course_id, 10, 20, 30, 40
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM CourseMaterialWeightage cmw WHERE cmw.course_id = c.course_id);
+
+INSERT INTO Books (course_id, title, author, description, pdf_link)
+SELECT c.course_id, c.course_name + ' - Core Concepts', 'H. Malik',
+       'A strong conceptual guide aligned with weekly lectures.',
+       'https://example.com/books/core-concepts.pdf'
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM Books b WHERE b.course_id = c.course_id AND b.title = c.course_name + ' - Core Concepts');
+
+INSERT INTO Books (course_id, title, author, description, pdf_link)
+SELECT c.course_id, c.course_name + ' - Practice Workbook', 'A. Rehman',
+       'Contains solved examples, quizzes, and chapter-wise practice.',
+       'https://example.com/books/practice-workbook.pdf'
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM Books b WHERE b.course_id = c.course_id AND b.title = c.course_name + ' - Practice Workbook');
+
+INSERT INTO Books (course_id, title, author, description, pdf_link)
+SELECT c.course_id, c.course_name + ' - Exam Prep Notes', 'S. Ahmed',
+       'Quick revision notes for midterm/final preparation.',
+       'https://example.com/books/exam-prep-notes.pdf'
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM Books b WHERE b.course_id = c.course_id AND b.title = c.course_name + ' - Exam Prep Notes');
+
+INSERT INTO TaskManager (user_id, course_id, title, status, linked_deadline_id)
+SELECT s.student_id, c.course_id, 'Prepare notes for next class', 'todo', NULL
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM TaskManager tm WHERE tm.user_id = s.student_id AND tm.course_id = c.course_id AND tm.title = 'Prepare notes for next class');
+
+INSERT INTO TaskManager (user_id, course_id, title, status, linked_deadline_id)
+SELECT s.student_id, c.course_id, 'Complete weekly problem set', 'todo', NULL
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM TaskManager tm WHERE tm.user_id = s.student_id AND tm.course_id = c.course_id AND tm.title = 'Complete weekly problem set');
+
+INSERT INTO TaskManager (user_id, course_id, title, status, linked_deadline_id)
+SELECT s.student_id, c.course_id, 'Revise previous lecture', 'done', NULL
+FROM Courses c
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM TaskManager tm WHERE tm.user_id = s.student_id AND tm.course_id = c.course_id AND tm.title = 'Revise previous lecture');
+
+INSERT INTO TaskManager (user_id, course_id, title, status, linked_deadline_id)
+SELECT
+  s.student_id,
+  d.course_id,
+  'Work on: ' + d.title,
+  CASE WHEN LOWER(d.status) = 'completed' THEN 'done' ELSE 'todo' END,
+  d.deadline_id
+FROM Deadlines d
+JOIN Courses c ON c.course_id = d.course_id
+JOIN Semesters s ON s.semester_id = c.semester_id
+WHERE s.student_id IN (@User1, @User2, @User3)
+  AND NOT EXISTS (SELECT 1 FROM TaskManager tm WHERE tm.linked_deadline_id = d.deadline_id AND tm.user_id = s.student_id);
+
+PRINT 'database created.';
+GO
+
+SELECT * FROM Deadlines;
+SELECT * FROM TaskManager;
+SELECT * FROM StudyPlannerTasks;
+SELECT * FROM Books;
+SELECT * FROM CourseMaterials;
+SELECT * FROM CourseMaterialWeightage;
