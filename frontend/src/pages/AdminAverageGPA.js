@@ -33,7 +33,7 @@ const AdminAverageGPA = () => {
       <Link className="back-btn" to="/dashboard">← Dashboard</Link>
 
       <div className="page-header">
-        <h1 className="page-title">Admin Analytics</h1>
+        <h1 className="page-title">Overall CGPA</h1>
         <p className="description">Overview of academic performance across all students.</p>
       </div>
 

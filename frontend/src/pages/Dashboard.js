@@ -4,6 +4,16 @@ import { useNavigate } from 'react-router-dom';
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAuthenticated = !!localStorage.getItem('token');
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('studentId');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('email');
+    window.location.href = '/login';
+  };
 
   const features = [
     {
@@ -49,6 +59,20 @@ const Dashboard = () => {
       color: '#36b9cc'
     },
     {
+      title: 'GPA Scenarios',
+      description: 'Simulate "what if" grades to see your projected GPA before results are out.',
+      icon: '🔮',
+      path: '/scenarios',
+      color: '#fd7e14'
+    },
+    {
+      title: 'OVERALL CGPA',
+      description: 'View overall average CGPA and academic performance metrics.',
+      icon: '📊',
+      path: '/admin/average-gpa',
+      color: '#e83e8c'
+    },
+    {
       title: 'Student Profile',
       description: 'Update your personal information and account settings.',
       icon: '👤',
@@ -68,6 +92,56 @@ const Dashboard = () => {
           Welcome back, {user.full_name || 'Student'}!
         </h2>
         <p className="description">Here is an overview of your academic workspace.</p>
+        {!isAuthenticated && (
+          <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button
+              onClick={() => navigate('/login')}
+              style={{
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '1rem'
+              }}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => navigate('/register')}
+              style={{
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '1rem'
+              }}
+            >
+              Register
+            </button>
+          </div>
+        )}
+        {isAuthenticated && (
+          <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button
+              onClick={handleLogout}
+              style={{
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '1rem'
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="dashboard-grid" style={{
