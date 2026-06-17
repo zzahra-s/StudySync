@@ -7,7 +7,6 @@ const Courses = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
   const [creditHours, setCreditHours] = useState('');
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
@@ -34,13 +33,23 @@ const Courses = () => {
     e.preventDefault();
     setError('');
 
+    if (!name.trim()) {
+      setError('Course name is required.');
+      return;
+    }
+
+    if (!creditHours || Number(creditHours) <= 0) {
+      setError('Credit hours must be greater than 0.');
+      return;
+    }
+
     try {
       if (editId) {
         const response = await fetchWithToken(`http://localhost:5001/api/courses/${editId}`, {
           method: 'PUT',
           body: JSON.stringify({
             course_name: name,
-            course_code: code,
+            course_code: name.substring(0, 6).toUpperCase(), // Auto-generate code from name
             credit_hours: Number(creditHours)
           })
         });
@@ -55,7 +64,7 @@ const Courses = () => {
           body: JSON.stringify({
             semester_id: Number(semesterId),
             course_name: name,
-            course_code: code,
+            course_code: name.substring(0, 6).toUpperCase(), // Auto-generate code from name
             credit_hours: Number(creditHours)
           })
         });
@@ -64,7 +73,6 @@ const Courses = () => {
         }
       }
       setName('');
-      setCode('');
       setCreditHours('');
       fetchCourses();
     } catch (err) {
@@ -90,31 +98,49 @@ const Courses = () => {
   const handleEditClick = (course) => {
     setEditId(course.course_id || course.id);
     setName(course.course_name || course.name || '');
-    setCode(course.course_code || course.code || '');
     setCreditHours(course.credit_hours || course.creditHours || '');
   };
 
   return (
     <div className="page-container">
 
-      <h2>Courses</h2>
+      <div className="page-header">
+        <h1 className="page-title">Semester Courses</h1>
+        <p className="description">Add and manage courses with credit hours inside the selected semester.</p>
+      </div>
       {error && <p className="error">{error}</p>}
 
       <div className="card">
         <h3>{editId ? 'Edit Course' : 'Add Course'}</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <input type="text" placeholder="Course Name" value={name} onChange={(e) => setName(e.target.value)} required />
+            <label htmlFor="course-name">Course Name *</label>
+            <input
+              id="course-name"
+              type="text"
+              placeholder="e.g., Data Structures"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
           </div>
           <div className="form-group">
-            <input type="text" placeholder="Course Code" value={code} onChange={(e) => setCode(e.target.value)} required />
-          </div>
-          <div className="form-group">
-            <input type="number" placeholder="Credit Hours" value={creditHours} onChange={(e) => setCreditHours(e.target.value)} required />
+            <label htmlFor="credit-hours">Credit Hours *</label>
+            <input
+              id="credit-hours"
+              type="number"
+              placeholder="e.g., 3"
+              min="1"
+              max="6"
+              step="0.5"
+              value={creditHours}
+              onChange={(e) => setCreditHours(e.target.value)}
+              required
+            />
           </div>
           <button type="submit">{editId ? 'Update' : 'Add'}</button>
           {editId && (
-            <button type="button" onClick={() => { setEditId(null); setName(''); setCode(''); setCreditHours(''); }} style={{ background: '#6c757d' }}>Cancel</button>
+            <button type="button" onClick={() => { setEditId(null); setName(''); setCreditHours(''); }} style={{ background: '#6c757d' }}>Cancel</button>
           )}
         </form>
       </div>
@@ -124,7 +150,7 @@ const Courses = () => {
           courses.map(course => (
             <div key={course.course_id || course.id} className="card flex-between">
               <div>
-                <strong>{course.course_name || course.name} ({course.course_code || course.code})</strong> - {course.credit_hours || course.creditHours} Credits
+                <strong>{course.course_name || course.name}</strong> - {course.credit_hours || course.creditHours} Credits
               </div>
               <div>
                 <button onClick={() => navigate(`/courses/${course.course_id || course.id}/grade`)}>Enter Grade</button>
