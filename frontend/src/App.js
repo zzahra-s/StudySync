@@ -15,11 +15,9 @@ import ScenariosList from './pages/ScenariosList';
 import ScenarioDetail from './pages/ScenarioDetail';
 import CourseGradesReport from './pages/CourseGradesReport';
 import IncompleteCourses from './pages/IncompleteCourses';
-import AdminAverageGPA from './pages/AdminAverageGPA';
+import TargetCGPACalculator from './pages/TargetCGPACalculator';
 
 import DeadlinesPage from './pages/DeadlinesPage';
-import CourseMaterialsPage from './pages/CourseMaterialsPage';
-import BooksPage from './pages/BooksPage';
 import TaskProgressDashboard from './pages/TaskProgressDashboard';
 
 function App() {
@@ -41,15 +39,12 @@ function App() {
       <Route path="/gpa" element={<ProtectedRoute><GPADashboard /></ProtectedRoute>} />
       <Route path="/scenarios" element={<ProtectedRoute><ScenariosList /></ProtectedRoute>} />
       <Route path="/scenarios/:scenarioId" element={<ProtectedRoute><ScenarioDetail /></ProtectedRoute>} />
+      <Route path="/target-cgpa" element={<ProtectedRoute><TargetCGPACalculator /></ProtectedRoute>} />
 
       <Route path="/course-grades" element={<ProtectedRoute><CourseGradesReport /></ProtectedRoute>} />
       <Route path="/incomplete-courses" element={<ProtectedRoute><IncompleteCourses /></ProtectedRoute>} />
 
-      <Route path="/admin/average-gpa" element={<ProtectedRoute><AdminAverageGPA /></ProtectedRoute>} />
-
       <Route path="/deadlines" element={<ProtectedRoute><DeadlinesPage /></ProtectedRoute>} />
-      <Route path="/materials" element={<ProtectedRoute><CourseMaterialsPage /></ProtectedRoute>} />
-      <Route path="/books" element={<ProtectedRoute><BooksPage /></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute><TaskProgressDashboard /></ProtectedRoute>} />
 
       {/* Default redirect */}
