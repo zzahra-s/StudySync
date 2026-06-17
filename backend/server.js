@@ -18,8 +18,7 @@ const taskProgressRoutes = require('./routes/task-progress');
 const taskManagerRoutes = require('./routes/task-manager');
 const courseOptionsRoutes = require('./routes/course-options');
 const targetCGPARoutes = require('./routes/TargetCGPAroutes');
-
-dotenv.config();
+dotenv.config({ path: require('path').join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
