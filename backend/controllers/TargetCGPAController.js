@@ -1,360 +1,172 @@
-const db = require('../config/Database');
+const { TargetCGPAPlanModel, calculatePlan } = require('../models/TargetCGPAPlan');
+const GPA = require('../models/GPA');
 
 class TargetCGPAController {
-  // Save a new Target CGPA plan
+
+  // POST /api/students/:studentId/target-cgpa-plan
+  // Body: { targetCGPA, remainingCredits, remainingSemesters, completedCredits,
+  //         distributionMethod, semesters (optional array) }
   static async savePlan(req, res) {
     try {
-      const { studentId } = req.params;
-      const {
-        currentCGPA,
-        targetCGPA,
-        remainingCredits,
-        remainingSemesters,
-        totalDegreeCredits,
-        distributionMethod,
-        isAchievable,
-        requiredSGPA,
-        maxPossibleCGPA,
-        semesters
-      } = req.body;
+      const studentId = parseInt(req.params.studentId, 10);
 
-      // Validate required fields
-      if (
-        !studentId ||
-        currentCGPA === undefined ||
-        targetCGPA === undefined ||
-        remainingCredits === undefined ||
-        remainingSemesters === undefined
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing required fields'
-        });
+      // Auth guard: student can only save their own plan
+      if (req.user.id !== studentId) {
+        return res.status(403).json({ message: 'Access denied' });
       }
 
-      const query = `
-        INSERT INTO TargetCGPAPlan (
-          student_id,
-          current_cgpa,
-          target_cgpa,
-          remaining_credits,
-          remaining_semesters,
-          total_degree_credits,
-          distribution_method,
-          is_achievable,
-          required_sgpa,
-          max_possible_cgpa
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        SELECT SCOPE_IDENTITY() as plan_id;
-      `;
-
-      const params = [
-        studentId,
-        currentCGPA,
+      const {
         targetCGPA,
         remainingCredits,
         remainingSemesters,
-        totalDegreeCredits || 120,
-        distributionMethod || 'equal',
-        isAchievable ? 1 : 0,
-        requiredSGPA || null,
-        maxPossibleCGPA || null
-      ];
+        completedCredits,   // frontend sends this; we also try fetching from DB
+        distributionMethod = 'equal',
+        semesters = []
+      } = req.body;
 
-      const result = await db.query(query, params);
-      const planId = result.recordset[0].plan_id;
+      // ── Validation ─────────────────────────────────────────────
+      if (targetCGPA === undefined || targetCGPA === null)
+        return res.status(400).json({ message: 'targetCGPA is required' });
+      if (remainingCredits === undefined || remainingCredits === null || remainingCredits <= 0)
+        return res.status(400).json({ message: 'remainingCredits must be a positive number' });
+      if (remainingSemesters === undefined || remainingSemesters === null || remainingSemesters <= 0)
+        return res.status(400).json({ message: 'remainingSemesters must be a positive number' });
+      if (parseFloat(targetCGPA) < 0 || parseFloat(targetCGPA) > 4.0)
+        return res.status(400).json({ message: 'targetCGPA must be between 0 and 4.0' });
 
-      // If custom distribution, save semester data
-      if (semesters && semesters.length > 0) {
-        for (let i = 0; i < semesters.length; i++) {
-          const sem = semesters[i];
-          const semQuery = `
-            INSERT INTO TargetCGPASemesters (
-              plan_id,
-              semester_number,
-              semester_name,
-              credits,
-              required_sgpa,
-              is_achievable
-            )
-            VALUES (?, ?, ?, ?, ?, ?);
-          `;
-
-          const semParams = [
-            planId,
-            i + 1,
-            sem.name,
-            sem.credits,
-            parseFloat(sem.requiredSGPA),
-            sem.achievable ? 1 : 0
-          ];
-
-          await db.query(semQuery, semParams);
+      if (distributionMethod === 'custom' && semesters.length > 0) {
+        const total = semesters.reduce((sum, s) => sum + parseInt(s.credits, 10), 0);
+        if (total !== parseInt(remainingCredits, 10)) {
+          return res.status(400).json({
+            message: `Sum of custom semester credits (${total}) must equal remaining credits (${remainingCredits})`
+          });
         }
       }
 
-      res.status(201).json({
+      // ── Fetch live CGPA data from the DB ───────────────────────
+      let currentCGPA = parseFloat(completedCredits !== undefined ? 0 : 0);
+      let liveCompletedCredits = completedCredits !== undefined ? parseInt(completedCredits, 10) : 0;
+
+      try {
+        const cgpaData = await GPA.getCGPA(studentId);
+        if (cgpaData && cgpaData.cgpa !== null) {
+          currentCGPA = parseFloat(cgpaData.cgpa);
+          liveCompletedCredits = parseFloat(cgpaData.total_credit_hours) || liveCompletedCredits;
+        }
+      } catch (e) {
+        // If no graded courses yet, user must provide current CGPA manually
+        if (req.body.currentCGPA !== undefined) {
+          currentCGPA = parseFloat(req.body.currentCGPA);
+        }
+      }
+
+      // If user explicitly passes currentCGPA, honour it (override DB lookup)
+      if (req.body.currentCGPA !== undefined && req.body.currentCGPA !== null) {
+        currentCGPA = parseFloat(req.body.currentCGPA);
+      }
+
+      const totalDegreeCredits = (liveCompletedCredits + parseInt(remainingCredits, 10));
+
+      // ── Run corrected calculation ───────────────────────────────
+      const calc = calculatePlan(
+        currentCGPA,
+        liveCompletedCredits,
+        parseFloat(targetCGPA),
+        parseInt(remainingCredits, 10),
+        parseInt(remainingSemesters, 10),
+        distributionMethod === 'custom' ? semesters : []
+      );
+
+      // ── Persist to DB ──────────────────────────────────────────
+      const planId = await TargetCGPAPlanModel.upsert(
+        studentId,
+        {
+          currentCGPA,
+          targetCGPA:          parseFloat(targetCGPA),
+          remainingCredits:    parseInt(remainingCredits, 10),
+          remainingSemesters:  parseInt(remainingSemesters, 10),
+          totalDegreeCredits,
+          distributionMethod,
+          isAchievable:        calc.achievable,
+          requiredSGPA:        calc.requiredSGPA,
+          maxPossibleCGPA:     calc.maxPossible
+        },
+        calc.semesters
+      );
+
+      return res.status(201).json({
         success: true,
-        message: 'Target CGPA plan saved successfully',
-        planId: planId
+        planId,
+        currentCGPA,
+        completedCredits: liveCompletedCredits,
+        ...calc
       });
+
     } catch (error) {
-      console.error('Error saving Target CGPA plan:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error saving plan',
-        error: error.message
-      });
+      console.error('TargetCGPA savePlan error:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
     }
   }
 
-  // Get all plans for a student
+  // GET /api/students/:studentId/target-cgpa-plan
   static async getStudentPlans(req, res) {
     try {
-      const { studentId } = req.params;
+      const studentId = parseInt(req.params.studentId, 10);
 
-      const query = `
-        SELECT TOP 1
-          plan_id,
-          student_id,
-          current_cgpa,
-          target_cgpa,
-          remaining_credits,
-          remaining_semesters,
-          total_degree_credits,
-          distribution_method,
-          is_achievable,
-          required_sgpa,
-          max_possible_cgpa,
-          created_at,
-          updated_at
-        FROM TargetCGPAPlan
-        WHERE student_id = ?
-        ORDER BY created_at DESC;
-      `;
-
-      const result = await db.query(query, [studentId]);
-
-      if (result.recordset.length === 0) {
-        return res.status(404).json({
-          success: true,
-          message: 'No plans found',
-          plan: null
-        });
+      if (req.user.id !== studentId) {
+        return res.status(403).json({ message: 'Access denied' });
       }
 
-      const plan = result.recordset[0];
-
-      // If custom distribution, fetch semester data
-      if (plan.distribution_method === 'custom') {
-        const semQuery = `
-          SELECT
-            semester_number,
-            semester_name,
-            credits,
-            required_sgpa,
-            is_achievable
-          FROM TargetCGPASemesters
-          WHERE plan_id = ?
-          ORDER BY semester_number;
-        `;
-
-        const semResult = await db.query(semQuery, [plan.plan_id]);
-        plan.semesters = semResult.recordset;
+      const plan = await TargetCGPAPlanModel.findByStudent(studentId);
+      if (!plan) {
+        return res.status(200).json({ success: true, plan: null, message: 'No plan found' });
       }
 
-      res.status(200).json({
-        success: true,
-        plan: plan
-      });
+      return res.status(200).json({ success: true, plan });
+
     } catch (error) {
-      console.error('Error fetching Target CGPA plans:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching plans',
-        error: error.message
-      });
+      console.error('TargetCGPA getStudentPlans error:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
     }
   }
 
-  // Get specific plan by ID
-  static async getPlanById(req, res) {
-    try {
-      const { planId } = req.params;
-
-      const query = `
-        SELECT
-          plan_id,
-          student_id,
-          current_cgpa,
-          target_cgpa,
-          remaining_credits,
-          remaining_semesters,
-          total_degree_credits,
-          distribution_method,
-          is_achievable,
-          required_sgpa,
-          max_possible_cgpa,
-          created_at,
-          updated_at
-        FROM TargetCGPAPlan
-        WHERE plan_id = ?;
-      `;
-
-      const result = await db.query(query, [planId]);
-
-      if (result.recordset.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Plan not found'
-        });
-      }
-
-      const plan = result.recordset[0];
-
-      // If custom distribution, fetch semester data
-      if (plan.distribution_method === 'custom') {
-        const semQuery = `
-          SELECT
-            semester_number,
-            semester_name,
-            credits,
-            required_sgpa,
-            is_achievable
-          FROM TargetCGPASemesters
-          WHERE plan_id = ?
-          ORDER BY semester_number;
-        `;
-
-        const semResult = await db.query(semQuery, [planId]);
-        plan.semesters = semResult.recordset;
-      }
-
-      res.status(200).json({
-        success: true,
-        plan: plan
-      });
-    } catch (error) {
-      console.error('Error fetching Target CGPA plan:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching plan',
-        error: error.message
-      });
-    }
-  }
-
-  // Update existing plan
-  static async updatePlan(req, res) {
-    try {
-      const { planId } = req.params;
-      const {
-        currentCGPA,
-        targetCGPA,
-        remainingCredits,
-        remainingSemesters,
-        totalDegreeCredits,
-        isAchievable,
-        requiredSGPA,
-        maxPossibleCGPA,
-        semesters
-      } = req.body;
-
-      const query = `
-        UPDATE TargetCGPAPlan
-        SET
-          current_cgpa = ?,
-          target_cgpa = ?,
-          remaining_credits = ?,
-          remaining_semesters = ?,
-          total_degree_credits = ?,
-          is_achievable = ?,
-          required_sgpa = ?,
-          max_possible_cgpa = ?,
-          updated_at = GETDATE()
-        WHERE plan_id = ?;
-      `;
-
-      const params = [
-        currentCGPA,
-        targetCGPA,
-        remainingCredits,
-        remainingSemesters,
-        totalDegreeCredits || 120,
-        isAchievable ? 1 : 0,
-        requiredSGPA || null,
-        maxPossibleCGPA || null,
-        planId
-      ];
-
-      await db.query(query, params);
-
-      // Delete existing semester data if updating
-      if (semesters && semesters.length > 0) {
-        await db.query('DELETE FROM TargetCGPASemesters WHERE plan_id = ?', [planId]);
-
-        // Insert new semester data
-        for (let i = 0; i < semesters.length; i++) {
-          const sem = semesters[i];
-          const semQuery = `
-            INSERT INTO TargetCGPASemesters (
-              plan_id,
-              semester_number,
-              semester_name,
-              credits,
-              required_sgpa,
-              is_achievable
-            )
-            VALUES (?, ?, ?, ?, ?, ?);
-          `;
-
-          const semParams = [
-            planId,
-            i + 1,
-            sem.name,
-            sem.credits,
-            parseFloat(sem.requiredSGPA),
-            sem.achievable ? 1 : 0
-          ];
-
-          await db.query(semQuery, semParams);
-        }
-      }
-
-      res.status(200).json({
-        success: true,
-        message: 'Plan updated successfully'
-      });
-    } catch (error) {
-      console.error('Error updating Target CGPA plan:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error updating plan',
-        error: error.message
-      });
-    }
-  }
-
-  // Delete plan
+  // DELETE /api/students/:studentId/target-cgpa-plan
   static async deletePlan(req, res) {
     try {
-      const { planId } = req.params;
+      const studentId = parseInt(req.params.studentId, 10);
+      if (req.user.id !== studentId) return res.status(403).json({ message: 'Access denied' });
 
-      const query = 'DELETE FROM TargetCGPAPlan WHERE plan_id = ?';
-      await db.query(query, [planId]);
+      const deleted = await TargetCGPAPlanModel.deleteByStudent(studentId);
+      if (!deleted) return res.status(404).json({ message: 'No plan found to delete' });
 
-      res.status(200).json({
-        success: true,
-        message: 'Plan deleted successfully'
-      });
+      return res.status(200).json({ success: true, message: 'Plan deleted successfully' });
+
     } catch (error) {
-      console.error('Error deleting Target CGPA plan:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error deleting plan',
-        error: error.message
-      });
+      console.error('TargetCGPA deletePlan error:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  }
+
+  // GET /api/cgpa/calculate — stateless quick calculation (no DB save)
+  static async quickCalculate(req, res) {
+    try {
+      const {
+        currentCGPA, completedCredits, targetCGPA,
+        remainingCredits, remainingSemesters, semesters
+      } = req.body;
+
+      const calc = calculatePlan(
+        parseFloat(currentCGPA),
+        parseInt(completedCredits, 10),
+        parseFloat(targetCGPA),
+        parseInt(remainingCredits, 10),
+        parseInt(remainingSemesters, 10),
+        semesters || []
+      );
+
+      return res.status(200).json(calc);
+    } catch (error) {
+      return res.status(500).json({ message: 'Server error', error: error.message });
     }
   }
 }
