@@ -18,17 +18,31 @@ const Dashboard = () => {
   const features = [
     {
       title: 'GPA Tracker',
-      description: 'Track your cumulative GPA and project future semester grades.',
+      description: 'Track your cumulative GPA, semester count, and overall CGPA at a glance.',
       icon: '📈',
       path: '/gpa',
       color: '#6f42c1'
     },
     {
-      title: 'Academic Progress',
-      description: 'View your semesters, courses, and track your GPA performance.',
+      title: 'Total Semesters',
+      description: 'Add semesters and then add courses with credit hours for each term.',
       icon: '📊',
       path: '/semesters',
       color: '#4e73df'
+    },
+    {
+      title: 'GPA Scenarios',
+      description: 'Simulate expected course grades and see projected GPA outcomes.',
+      icon: '🔮',
+      path: '/scenarios',
+      color: '#fd7e14'
+    },
+    {
+      title: 'Target CGPA Calculator',
+      description: 'Plan your academic path and calculate required GPAs to reach your target.',
+      icon: '🎯',
+      path: '/target-cgpa',
+      color: '#20c997'
     },
     {
       title: 'Upcoming Deadlines',
@@ -43,34 +57,6 @@ const Dashboard = () => {
       icon: '📋',
       path: '/progress',
       color: '#1cc88a'
-    },
-    {
-      title: 'Course Materials',
-      description: 'Access and organize your lecture notes and study guides.',
-      icon: '📁',
-      path: '/materials',
-      color: '#f6c23e'
-    },
-    {
-      title: 'Books & Resources',
-      description: 'Manage your textbooks and additional reading materials.',
-      icon: '📚',
-      path: '/books',
-      color: '#36b9cc'
-    },
-    {
-      title: 'GPA Scenarios',
-      description: 'Simulate "what if" grades to see your projected GPA before results are out.',
-      icon: '🔮',
-      path: '/scenarios',
-      color: '#fd7e14'
-    },
-    {
-      title: 'OVERALL CGPA',
-      description: 'View overall average CGPA and academic performance metrics.',
-      icon: '📊',
-      path: '/admin/average-gpa',
-      color: '#e83e8c'
     },
     {
       title: 'Student Profile',
