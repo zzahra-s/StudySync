@@ -97,7 +97,10 @@ const Semesters = () => {
   return (
     <div className="page-container">
 
-      <h2>Semesters</h2>
+      <div className="page-header">
+        <h1 className="page-title">Total Semesters</h1>
+        <p className="description">Create semesters and add courses with credit hours for each term.</p>
+      </div>
       {error && <p className="error">{error}</p>}
 
       <div className="card">
