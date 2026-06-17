@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
 
-const VALID_GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'F'];
+const VALID_GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F'];
 
 const ScenarioDetail = () => {
   const { scenarioId } = useParams();
@@ -11,7 +11,9 @@ const ScenarioDetail = () => {
 
   const [scenario, setScenario] = useState(null);
   const [projection, setProjection] = useState(null);
-  const [allCourses, setAllCourses] = useState([]);
+  const [semesters, setSemesters] = useState([]);
+  const [selectedSemesterId, setSelectedSemesterId] = useState('');
+  const [semesterCourses, setSemesterCourses] = useState([]);
   const [newCourseId, setNewCourseId] = useState('');
   const [newGrade, setNewGrade] = useState('A');
   const [editingName, setEditingName] = useState(false);
@@ -24,23 +26,47 @@ const ScenarioDetail = () => {
     if (scenarioId && studentId) loadAll();
   }, [scenarioId, studentId]);
 
+  useEffect(() => {
+    if (selectedSemesterId) fetchSemesterCourses(selectedSemesterId);
+    else setSemesterCourses([]);
+  }, [selectedSemesterId]);
+
   const loadAll = async () => {
     setLoading(true);
     setError('');
     try {
-      const sRes = await fetchWithToken(`http://localhost:5001/api/scenarios/${scenarioId}`);
+      const [sRes, semRes] = await Promise.all([
+        fetchWithToken(`http://localhost:5001/api/scenarios/${scenarioId}`),
+        fetchWithToken(`http://localhost:5001/api/students/${studentId}/semesters`)
+      ]);
+
       const sData = await sRes.json();
-      if (!sRes.ok) { setError(sData.message || 'Failed to load scenario.'); setLoading(false); return; }
+      if (!sRes.ok) {
+        setError(sData.message || 'Failed to load scenario.');
+        setLoading(false);
+        return;
+      }
       setScenario(sData);
       setNameInput(sData.scenario_name);
+
+      const semData = await semRes.json();
+      if (semRes.ok) setSemesters(semData);
       await loadProjection();
-      const cRes = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/courses`);
-      const cData = await cRes.json();
-      if (cRes.ok) setAllCourses(cData);
     } catch (err) {
       setError('Network error. Check the server.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSemesterCourses = async (semesterId) => {
+    try {
+      const cRes = await fetchWithToken(`http://localhost:5001/api/semesters/${semesterId}/courses`);
+      const cData = await cRes.json();
+      if (cRes.ok) setSemesterCourses(cData);
+      else setSemesterCourses([]);
+    } catch (_) {
+      setSemesterCourses([]);
     }
   };
 
@@ -54,7 +80,8 @@ const ScenarioDetail = () => {
 
   const handleRename = async (e) => {
     e.preventDefault();
-    setError(''); setMessage('');
+    setError('');
+    setMessage('');
     const res = await fetchWithToken(`http://localhost:5001/api/scenarios/${scenarioId}`, {
       method: 'PUT',
       body: JSON.stringify({ scenario_name: nameInput }),
@@ -71,11 +98,19 @@ const ScenarioDetail = () => {
 
   const handleAddCourse = async (e) => {
     e.preventDefault();
-    setError(''); setMessage('');
-    if (!newCourseId) { setError('Please select a course.'); return; }
+    setError('');
+    setMessage('');
+    if (!selectedSemesterId) {
+      setError('Please select a semester first.');
+      return;
+    }
+    if (!newCourseId) {
+      setError('Please select a course.');
+      return;
+    }
     const res = await fetchWithToken(`http://localhost:5001/api/scenarios/${scenarioId}/courses`, {
       method: 'POST',
-      body: JSON.stringify({ course_id: parseInt(newCourseId), expected_grade: newGrade }),
+      body: JSON.stringify({ course_id: parseInt(newCourseId, 10), expected_grade: newGrade }),
     });
     const data = await res.json();
     if (res.ok) {
@@ -89,7 +124,8 @@ const ScenarioDetail = () => {
   };
 
   const handleRemoveCourse = async (courseId) => {
-    setError(''); setMessage('');
+    setError('');
+    setMessage('');
     const res = await fetchWithToken(
       `http://localhost:5001/api/scenarios/${scenarioId}/courses/${courseId}`,
       { method: 'DELETE' }
@@ -203,20 +239,39 @@ const ScenarioDetail = () => {
       <div className="card">
         <h3>Add / Update a Course</h3>
         <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: 0, marginBottom: 16 }}>
-          Pick a course and assign an expected grade. If it's already in the scenario, its grade will be updated.
+          Choose a semester first, then pick one of its courses and assign an expected grade.
         </p>
         <form onSubmit={handleAddCourse}>
           <div className="form-group">
-            <label>Course</label>
-            <select value={newCourseId} onChange={(e) => setNewCourseId(e.target.value)} required>
-              <option value="">— Select a course —</option>
-              {allCourses.map((c) => (
-                <option key={c.course_id} value={c.course_id}>
-                  {c.course_name} ({c.course_code}) — {c.semester_name}
+            <label>Semester</label>
+            <select
+              value={selectedSemesterId}
+              onChange={(e) => {
+                setSelectedSemesterId(e.target.value);
+                setNewCourseId('');
+              }}
+            >
+              <option value="">— Select semester —</option>
+              {semesters.map((sem) => (
+                <option key={sem.semester_id || sem.id} value={sem.semester_id || sem.id}>
+                  {sem.semester_name || sem.name}
                 </option>
               ))}
             </select>
           </div>
+
+          <div className="form-group">
+            <label>Course</label>
+            <select value={newCourseId} onChange={(e) => setNewCourseId(e.target.value)} required>
+              <option value="">— Select a course —</option>
+              {semesterCourses.map((c) => (
+                <option key={c.course_id || c.id} value={c.course_id || c.id}>
+                  {c.course_name || c.name} ({c.course_code || c.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="form-group">
             <label>Expected Grade</label>
             <select value={newGrade} onChange={(e) => setNewGrade(e.target.value)}>
@@ -225,7 +280,8 @@ const ScenarioDetail = () => {
               ))}
             </select>
           </div>
-          <button type="submit">Add to Scenario</button>
+
+          <button type="submit" disabled={!selectedSemesterId || !newCourseId}>Add to Scenario</button>
         </form>
       </div>
     </div>
