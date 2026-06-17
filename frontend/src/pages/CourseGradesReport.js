@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
 
 const CourseGradesReport = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const studentId = user.student_id;
+  const navigate = useNavigate();
 
   const [grades, setGrades] = useState([]);
   const [error, setError] = useState('');
@@ -32,16 +33,20 @@ const CourseGradesReport = () => {
   if (loading) return <div className="loading">Loading grades</div>;
 
   const gradeColor = (grade) => {
-    if (grade === 'A') return 'badge badge-green';
+    if (grade === 'A' || grade === 'A+' || grade === 'A-') return 'badge badge-green';
     if (grade === 'F') return 'badge badge-red';
     return 'badge badge-indigo';
   };
 
   return (
     <div className="page-container">
-      <div className="nav-bar">
-        <Link to="/dashboard">← Dashboard</Link>
-        <Link to="/incomplete-courses">Incomplete Courses</Link>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <button className="back-btn" onClick={() => navigate('/dashboard')}>
+          ← Back to Dashboard
+        </button>
+        <button className="btn-secondary" onClick={() => navigate('/incomplete-courses')}>
+          Incomplete Courses
+        </button>
       </div>
 
       <div className="page-header">
@@ -81,7 +86,7 @@ const CourseGradesReport = () => {
                   <td>{row.credit_hours}</td>
                   <td><span className={gradeColor(row.letter_grade)}>{row.letter_grade}</span></td>
                   <td>{row.grade_points}</td>
-                  <td style={{ color: '#6b7280', fontSize: '0.85rem' }}>{row.comments || '—'}</td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{row.comments || '—'}</td>
                 </tr>
               ))}
             </tbody>
