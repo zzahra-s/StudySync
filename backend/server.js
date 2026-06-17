@@ -15,10 +15,9 @@ const scenarioRoutes = require('./routes/Scenarioroutes');
 const reportRoutes = require('./routes/Reportroutes');
 const deadlinesRoutes = require('./routes/deadlines');
 const taskProgressRoutes = require('./routes/task-progress');
-const bookMaterialRoutes = require('./routes/book-material');
-const courseMaterialRoutes = require('./routes/course-material');
 const taskManagerRoutes = require('./routes/task-manager');
 const courseOptionsRoutes = require('./routes/course-options');
+const targetCGPARoutes = require('./routes/TargetCGPAroutes');
 
 dotenv.config();
 
@@ -55,10 +54,9 @@ app.use('/api', scenarioRoutes);
 app.use('/api', reportRoutes);
 app.use('/api', deadlinesRoutes);
 app.use('/api', taskProgressRoutes);
-app.use('/api', bookMaterialRoutes);
-app.use('/api', courseMaterialRoutes);
 app.use('/api', taskManagerRoutes);
 app.use('/api', courseOptionsRoutes);
+app.use('/api', targetCGPARoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
