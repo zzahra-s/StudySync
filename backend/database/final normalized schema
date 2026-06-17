@@ -201,8 +201,9 @@ GO
 -- ============================================
 
 INSERT INTO GradePoints (letter_grade, grade_points) VALUES
-('A', 4.00), ('A-', 3.67), ('B+', 3.33), ('B', 3.00),
-('B-', 2.67), ('C+', 2.33), ('C', 2.00), ('F', 0.00);
+('A+', 4.00), ('A', 4.00), ('A-', 3.70), ('B+', 3.30),
+('B', 3.00), ('B-', 2.70), ('C+', 2.30), ('C', 2.00),
+('C-', 1.70), ('D+', 1.30), ('D', 1.00), ('F', 0.00);
 
 INSERT INTO Students (full_name, roll_number, email, password) VALUES
 ('Zahra Saeed', 'L24-2512', 'l242512@gmail.com', 'abcd'),
