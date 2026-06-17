@@ -113,13 +113,6 @@ const GradeEntry = () => {
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
               required
-              style={{
-                padding: '10px',
-                fontSize: '16px',
-                borderRadius: '4px',
-                border: '1px solid #ddd',
-                width: '100%'
-              }}
             >
               <option value="">— Choose a Grade —</option>
               {GRADE_SCALE.map((g) => (
@@ -133,22 +126,22 @@ const GradeEntry = () => {
           {grade && selectedGradePoints !== null && (
             <div
               style={{
-                backgroundColor: '#e7f3ff',
-                border: '1px solid #2196F3',
-                borderRadius: '4px',
+                backgroundColor: 'var(--accent-glow)',
+                border: '1px solid var(--accent)',
+                borderRadius: 'var(--radius-sm)',
                 padding: '12px',
                 marginBottom: '16px',
                 textAlign: 'center'
               }}
             >
-              <p style={{ margin: '0', fontSize: '14px', color: '#555' }}>Grade Points</p>
-              <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: 'bold', color: '#2196F3' }}>
+              <p style={{ margin: '0', fontSize: '14px', color: 'var(--text-secondary)' }}>Grade Points</p>
+              <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: 'bold', color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace" }}>
                 {selectedGradePoints.toFixed(2)}
               </p>
             </div>
           )}
 
-          <button type="submit" style={{ width: '100%', padding: '12px', fontSize: '16px' }}>
+          <button type="submit" style={{ width: '100%', padding: '12px', justifyContent: 'center' }}>
             Save Grade
           </button>
         </form>

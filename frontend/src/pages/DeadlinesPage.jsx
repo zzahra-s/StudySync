@@ -310,18 +310,22 @@ function DeadlinesPage() {
             <p className="empty-state">No deadlines found for the selected semester.</p>
           ) : (
             filteredDeadlines.map((deadline) => (
-              <div key={deadline.id} className="deadline-card">
-                <p><strong>{deadline.title}</strong></p>
-                <p>{deadline.description || 'No description added.'}</p>
-                <p><strong>Course:</strong> {deadline.course || deadline.courseName || 'N/A'}</p>
-                <p><strong>Due Date:</strong> {normalizeDate(deadline.dueDate || deadline.due_date)}</p>
-                <p><strong>Status:</strong> {deadline.status}</p>
-                <button type="button" onClick={() => handleEdit(deadline)} style={{ marginRight: '8px' }}>
-                  Edit
-                </button>
-                <button type="button" onClick={() => handleDelete(deadline.id)}>
-                  Delete
-                </button>
+              <div key={deadline.id} className="deadline-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <p style={{ marginTop: 0 }}><strong>{deadline.title}</strong></p>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{deadline.description || 'No description added.'}</p>
+                  <p style={{ fontSize: '0.85rem' }}><strong>Course:</strong> {deadline.course || deadline.courseName || 'N/A'}</p>
+                  <p style={{ fontSize: '0.85rem', fontFamily: "'JetBrains Mono', monospace" }}><strong>Due Date:</strong> {normalizeDate(deadline.dueDate || deadline.due_date)}</p>
+                  <p style={{ fontSize: '0.85rem' }}><strong>Status:</strong> {deadline.status}</p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                  <button type="button" className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.82rem' }} onClick={() => handleEdit(deadline)}>
+                    Edit
+                  </button>
+                  <button type="button" className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.82rem' }} onClick={() => handleDelete(deadline.id)}>
+                    Delete
+                  </button>
+                </div>
               </div>
             ))
           )}

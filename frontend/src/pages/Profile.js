@@ -86,9 +86,9 @@ const Profile = () => {
           </div>
           
           {isEditing ? (
-            <div>
+            <div style={{ display: 'flex', gap: '8px' }}>
               <button type="submit">Save</button>
-              <button type="button" onClick={() => setIsEditing(false)} style={{ background: '#6c757d' }}>Cancel</button>
+              <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
             </div>
           ) : (
             <button type="button" onClick={() => setIsEditing(true)}>Edit Profile</button>

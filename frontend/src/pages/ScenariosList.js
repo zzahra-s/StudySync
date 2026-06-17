@@ -81,9 +81,10 @@ const ScenariosList = () => {
 
   return (
     <div className="page-container">
-      <div className="nav-bar">
-        <Link to="/gpa">← GPA Dashboard</Link>
-        <Link to="/dashboard">Dashboard</Link>
+      <div style={{ marginBottom: '20px' }}>
+        <button className="back-btn" onClick={() => navigate('/gpa')}>
+          ← Back to GPA Dashboard
+        </button>
       </div>
 
       <div className="page-header">

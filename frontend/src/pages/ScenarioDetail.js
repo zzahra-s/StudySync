@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
 
 const VALID_GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F'];
@@ -8,6 +8,7 @@ const ScenarioDetail = () => {
   const { scenarioId } = useParams();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const studentId = user.student_id;
+  const navigate = useNavigate();
 
   const [scenario, setScenario] = useState(null);
   const [projection, setProjection] = useState(null);
@@ -144,9 +145,10 @@ const ScenarioDetail = () => {
 
   return (
     <div className="page-container">
-      <div className="nav-bar">
-        <Link to="/scenarios">← Scenarios</Link>
-        <Link to="/dashboard">Dashboard</Link>
+      <div style={{ marginBottom: '20px' }}>
+        <button className="back-btn" onClick={() => navigate('/scenarios')}>
+          ← Back to Scenarios
+        </button>
       </div>
 
       {error && <p className="error">{error}</p>}

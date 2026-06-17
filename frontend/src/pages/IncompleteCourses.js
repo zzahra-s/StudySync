@@ -36,8 +36,14 @@ const IncompleteCourses = () => {
 
   return (
     <div className="page-container">
-      <Link className="back-btn" to="/dashboard">← Dashboard</Link>
-      <Link className="back-btn" to="/course-grades">← Grades Report</Link>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <button className="back-btn" onClick={() => navigate('/course-grades')}>
+          ← Back to Grades Report
+        </button>
+        <button className="btn-secondary" onClick={() => navigate('/dashboard')}>
+          Dashboard
+        </button>
+      </div>
 
       <div className="page-header">
         <h1 className="page-title">Courses Without Grades</h1>
@@ -61,7 +67,7 @@ const IncompleteCourses = () => {
             <div>
               <strong>{course.course_name}</strong>
               <span style={{ marginLeft: 8 }}>
-                <code style={{ fontSize: '0.82rem', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 4 }}>
+                <code style={{ fontSize: '0.82rem', background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: 4 }}>
                   {course.course_code}
                 </code>
               </span>

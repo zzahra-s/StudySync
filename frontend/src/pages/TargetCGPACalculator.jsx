@@ -1,803 +1,769 @@
 import React, { useState, useEffect } from 'react';
-import useAuth from '../hooks/useAuth';
-import api from '../services/api';
+import { fetchWithToken } from '../utils/fetchWithToken';
 
-function TargetCGPACalculator() {
-  const { user } = useAuth();
-  const studentId = user?.studentId;
+const API = 'http://localhost:5001/api';
 
-  // State for initial inputs - stored as strings to preserve user input exactly
-  const [step, setStep] = useState(1); // 1: Input, 2: Method Selection, 3: Results
-  const [currentCGPAInput, setCurrentCGPAInput] = useState('');
-  const [targetCGPAInput, setTargetCGPAInput] = useState('');
-  const [remainingCreditsInput, setRemainingCreditsInput] = useState('');
-  const [remainingSemestersInput, setRemainingSemestersInput] = useState('');
-  const [totalDegreeCreditsInput, setTotalDegreeCreditsInput] = useState('120');
+// ─────────────────────────────────────────────────────────────────
+// Pure corrected calculation (mirrors backend logic exactly)
+// ─────────────────────────────────────────────────────────────────
+function calculatePlan(currentCGPA, completedCredits, targetCGPA, remainingCredits, remainingSemesters, customSemesters = []) {
+  const cc  = parseFloat(currentCGPA);
+  const cp  = parseFloat(completedCredits);
+  const tc  = parseFloat(targetCGPA);
+  const rc  = parseFloat(remainingCredits);
+  const rs  = parseInt(remainingSemesters, 10);
+  const tot = cp + rc;
 
-  // State for custom distribution
-  const [semesterData, setSemesterData] = useState([]);
-  const [results, setResults] = useState(null);
-  const [error, setError] = useState('');
-  const [distributionMethod, setDistributionMethod] = useState(null);
+  if (rc <= 0 || rs <= 0) {
+    return { achievable: true, requiredSGPA: cc, maxPossible: cc, semesters: [],
+      message: `Your current CGPA of ${cc.toFixed(2)} is already your final CGPA.` };
+  }
 
-  // Helper function to safely parse numbers
-  const parseNumber = (value, type = 'float') => {
-    const num = type === 'float' ? parseFloat(value) : parseInt(value, 10);
-    return isNaN(num) ? null : num;
+  const required = (tc * tot - cc * cp) / rc;
+  const maxPoss  = (cc * cp + 4.0 * rc) / tot;
+
+  if (required > 4.0) {
+    return {
+      achievable: false,
+      requiredSGPA: null,
+      maxPossible: parseFloat(maxPoss.toFixed(2)),
+      semesters: [],
+      message: `Target CGPA of ${tc.toFixed(2)} is unachievable. Maximum possible CGPA is ${maxPoss.toFixed(2)}.`
+    };
+  }
+
+  const sgpa = parseFloat(required.toFixed(2));
+  let semesters;
+  if (customSemesters && customSemesters.length > 0) {
+    semesters = customSemesters.map((s, i) => ({
+      name: s.name || `Semester ${i + 1}`,
+      credits: parseInt(s.credits, 10),
+      requiredSGPA: sgpa
+    }));
+  } else {
+    const cps = parseFloat((rc / rs).toFixed(1));
+    semesters = Array.from({ length: rs }, (_, i) => ({
+      name: `Semester ${i + 1}`,
+      credits: cps,
+      requiredSGPA: sgpa
+    }));
+  }
+
+  return {
+    achievable: true,
+    requiredSGPA: sgpa,
+    maxPossible: parseFloat(maxPoss.toFixed(2)),
+    semesters,
+    message: `Score approximately ${sgpa.toFixed(2)} SGPA each semester to reach your target CGPA of ${tc.toFixed(2)}.`
   };
+}
 
-  // Load saved plan on component mount
+// ─────────────────────────────────────────────────────────────────
+// Colour helpers
+// ─────────────────────────────────────────────────────────────────
+function sgpaColor(v) {
+  if (!v && v !== 0) return 'var(--text-muted)';
+  if (v >= 3.5) return 'var(--accent-gold)';
+  if (v >= 3.0) return 'var(--accent)';
+  if (v >= 2.5) return 'var(--warning)';
+  return 'var(--red)';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Sub-components
+// ─────────────────────────────────────────────────────────────────
+function StepIndicator({ step }) {
+  const steps = ['Inputs', 'Method', 'Results'];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 36 }}>
+      {steps.map((label, i) => {
+        const idx   = i + 1;
+        const done  = step > idx;
+        const active = step === idx;
+        return (
+          <React.Fragment key={idx}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontWeight: 700, fontSize: 14, transition: 'all .3s',
+                background: done ? 'var(--success)' : active ? 'linear-gradient(135deg, var(--accent), var(--accent-hover))' : 'var(--bg-tertiary)',
+                color: done || active ? '#0B1120' : 'var(--text-muted)',
+                border: active ? '2px solid var(--accent)' : done ? '2px solid var(--success)' : '1px solid var(--border)',
+                boxShadow: active ? '0 0 0 4px var(--accent-glow)' : 'none'
+              }}>
+                {done ? '✓' : idx}
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 600, color: active ? 'var(--accent)' : done ? 'var(--success)' : 'var(--text-muted)', letterSpacing: '.5px', textTransform: 'uppercase' }}>
+                {label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div style={{
+                height: 2,
+                width: 60,
+                background: step > idx + 1 ? 'var(--success)' : step > idx ? 'linear-gradient(90deg, var(--success), var(--border))' : 'var(--border)',
+                margin: '0 4px',
+                marginBottom: 22,
+                transition: 'all .4s'
+              }} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+function InfoBanner({ currentCGPA, completedCredits, loading }) {
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg-tertiary) 100%)',
+      border: '1px solid var(--border)',
+      borderRadius: 16, padding: '20px 24px', marginBottom: 24, display: 'flex',
+      gap: 32, flexWrap: 'wrap', alignItems: 'center'
+    }}>
+      <div>
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4, color: 'var(--text-secondary)' }}>Current CGPA</div>
+        {loading
+          ? <div style={{ width: 64, height: 28, background: 'rgba(255,255,255,.05)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
+          : <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-gold)', fontFamily: "'JetBrains Mono', monospace" }}>{currentCGPA !== null ? Number(currentCGPA).toFixed(2) : '—'}</div>}
+      </div>
+      <div style={{ width: 1, height: 40, background: 'var(--border)', flexShrink: 0 }} />
+      <div>
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4, color: 'var(--text-secondary)' }}>Completed Credits</div>
+        {loading
+          ? <div style={{ width: 48, height: 28, background: 'rgba(255,255,255,.05)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
+          : <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{completedCredits !== null ? completedCredits : '—'}</div>}
+      </div>
+      <div style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 13, maxWidth: 220, lineHeight: 1.5 }}>
+        📊 Live data fetched from your grade records
+      </div>
+    </div>
+  );
+}
+
+function InputCard({ label, id, type = 'number', value, onChange, placeholder, hint, min, max, step }) {
+  return (
+    <div className="form-group" style={{ marginBottom: 20 }}>
+      <label htmlFor={id} style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, letterSpacing: '.3px' }}>
+        {label}
+      </label>
+      <input
+        id={id} type={type} value={value} onChange={onChange}
+        placeholder={placeholder} min={min} max={max} step={step || 'any'}
+        style={{
+          width: '100%', padding: '11px 14px', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
+          fontSize: 15, outline: 'none', transition: 'border .2s, box-shadow 0.2s', boxSizing: 'border-box',
+          fontFamily: 'inherit', background: 'var(--bg-tertiary)', color: 'var(--text-primary)'
+        }}
+        onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }}
+        onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
+      />
+      {hint && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{hint}</div>}
+    </div>
+  );
+}
+
+function SemesterResultCard({ sem, index }) {
+  const color = sgpaColor(sem.requiredSGPA);
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '14px 18px', borderRadius: 12, background: 'var(--bg-tertiary)',
+      border: '1px solid var(--border)', transition: 'box-shadow .2s, border-color 0.2s'
+    }}
+    onMouseEnter={e => {
+      e.currentTarget.style.boxShadow = 'var(--shadow)';
+      e.currentTarget.style.borderColor = 'var(--accent-glow)';
+    }}
+    onMouseLeave={e => {
+      e.currentTarget.style.boxShadow = 'none';
+      e.currentTarget.style.borderColor = 'var(--border)';
+    }}
+    >
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{sem.name}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontFamily: "'JetBrains Mono', monospace" }}>{sem.credits} credit hours</div>
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: "'JetBrains Mono', monospace" }}>{sem.requiredSGPA?.toFixed(2)}</div>
+        <div style={{ fontSize: 11, fontWeight: 600, color, textTransform: 'uppercase', letterSpacing: '.5px' }}>Required SGPA</div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────────────────────────
+export default function TargetCGPACalculator() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const studentId = user?.student_id;
+
+  // Live CGPA state (fetched from backend)
+  const [liveCGPA,    setLiveCGPA]    = useState(null);
+  const [liveCredits, setLiveCredits] = useState(null);
+  const [liveLoading, setLiveLoading] = useState(true);
+
+  // Step & flow
+  const [step,   setStep]   = useState(1);
+  const [method, setMethod] = useState(null); // 'equal' | 'custom'
+
+  // Form inputs
+  const [targetCGPA,          setTargetCGPA]         = useState('');
+  const [remainingCredits,    setRemainingCredits]    = useState('');
+  const [remainingSemesters,  setRemainingSemesters]  = useState('');
+  const [manualCurrentCGPA,   setManualCurrentCGPA]   = useState('');
+  const [manualCompleted,     setManualCompleted]     = useState('');
+  const [useManual,           setUseManual]           = useState(false);
+
+  // Custom semester inputs
+  const [customSems, setCustomSems] = useState([]);
+
+  // Results
+  const [result,  setResult]  = useState(null);
+  const [error,   setError]   = useState('');
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+
+  // ── Fetch live CGPA on mount ──────────────────────────────────
   useEffect(() => {
-    if (studentId) {
-      loadSavedPlan();
-    }
+    if (!studentId) { setLiveLoading(false); setUseManual(true); return; }
+    (async () => {
+      try {
+        const res  = await fetchWithToken(`${API}/students/${studentId}/cgpa`);
+        const data = await res.json();
+        if (res.ok && data.cgpa !== null && data.cgpa !== undefined) {
+          setLiveCGPA(parseFloat(data.cgpa));
+          setLiveCredits(parseFloat(data.total_credit_hours) || 0);
+        } else {
+          setUseManual(true);
+        }
+      } catch { setUseManual(true); }
+      finally  { setLiveLoading(false); }
+    })();
   }, [studentId]);
 
-  // Load saved plan from backend
-  const loadSavedPlan = async () => {
-    try {
-      const response = await api.get(`/students/${studentId}/target-cgpa-plan`);
-      if (response.data.success && response.data.plan) {
-        const plan = response.data.plan;
-        setCurrentCGPAInput(plan.current_cgpa.toString());
-        setTargetCGPAInput(plan.target_cgpa.toString());
-        setRemainingCreditsInput(plan.remaining_credits.toString());
-        setRemainingSemestersInput(plan.remaining_semesters.toString());
-        setTotalDegreeCreditsInput(plan.total_degree_credits.toString());
-        setDistributionMethod(plan.distribution_method);
-
-        // Load semester data if custom distribution
-        if (plan.distribution_method === 'custom' && plan.semesters) {
-          setSemesterData(
-            plan.semesters.map((sem, idx) => ({
-              id: idx,
-              name: sem.semester_name,
-              credits: sem.credits.toString()
-            }))
-          );
-          // Display results if plan was already calculated
-          if (plan.semesters.length > 0) {
-            setResults({
-              achievable: plan.is_achievable,
-              message: plan.is_achievable
-                ? 'Your custom distribution plan is achievable with the following semester requirements:'
-                : `Maximum possible CGPA is ${plan.max_possible_cgpa}. Please adjust your distribution.`,
-              semesters: plan.semesters.map((sem) => ({
-                name: sem.semester_name,
-                credits: sem.credits,
-                requiredSGPA: sem.required_sgpa.toFixed(2),
-                achievable: sem.is_achievable
-              })),
-              custom: true
-            });
-            setStep(3);
-          }
-        } else if (plan.distribution_method === 'equal') {
-          // Reconstruct equal distribution results
-          const remainingSem = parseInt(plan.remaining_semesters);
-          const creditsPerSem = plan.remaining_credits / remainingSem;
-          setResults({
-            achievable: plan.is_achievable,
-            message: plan.is_achievable
-              ? `Score approximately ${plan.required_sgpa.toFixed(2)} SGPA each semester to reach your target CGPA of ${plan.target_cgpa.toFixed(2)}`
-              : `Maximum possible CGPA is ${plan.max_possible_cgpa}. Please lower your target.`,
-            requiredSGPA: plan.required_sgpa,
-            creditsPerSemester: creditsPerSem,
-            semesters: Array.from({ length: remainingSem }, (_, i) => ({
-              name: `Semester ${i + 1}`,
-              credits: creditsPerSem.toFixed(2),
-              requiredSGPA: plan.required_sgpa.toFixed(2)
-            }))
+  // ── Load existing saved plan ──────────────────────────────────
+  useEffect(() => {
+    if (!studentId) return;
+    (async () => {
+      try {
+        const res  = await fetchWithToken(`${API}/students/${studentId}/target-cgpa-plan`);
+        const data = await res.json();
+        if (res.ok && data.plan) {
+          const p = data.plan;
+          setTargetCGPA(p.target_cgpa?.toString() || '');
+          setRemainingCredits(p.remaining_credits?.toString() || '');
+          setRemainingSemesters(p.remaining_semesters?.toString() || '');
+          setMethod(p.distribution_method || 'equal');
+          // Reconstruct results
+          const cc  = parseFloat(p.current_cgpa);
+          const cp  = parseFloat(p.total_degree_credits) - parseFloat(p.remaining_credits);
+          const sems = p.semesters?.map(s => ({ name: s.semester_name, credits: s.credits, requiredSGPA: parseFloat(s.required_sgpa) })) || [];
+          setResult({
+            achievable:   !!p.is_achievable,
+            requiredSGPA: parseFloat(p.required_sgpa) || null,
+            maxPossible:  parseFloat(p.max_possible_cgpa) || null,
+            semesters:    sems,
+            message:      p.is_achievable
+              ? `Score approximately ${parseFloat(p.required_sgpa).toFixed(2)} SGPA each semester to reach your target CGPA of ${parseFloat(p.target_cgpa).toFixed(2)}.`
+              : `Maximum possible CGPA is ${parseFloat(p.max_possible_cgpa).toFixed(2)}. Please lower your target.`
           });
-          setStep(3);
+          if (sems.length > 0 || p.distribution_method === 'equal') setStep(3);
         }
-      }
-    } catch (error) {
-      console.error('Error loading saved plan:', error);
-      // Silently fail - user can still create new plan
+      } catch { /* no saved plan — that's fine */ }
+    })();
+  }, [studentId]);
+
+  // ── Derived values ────────────────────────────────────────────
+  const currentCGPA      = useManual ? parseFloat(manualCurrentCGPA) : liveCGPA;
+  const completedCredits = useManual ? parseFloat(manualCompleted)   : liveCredits;
+
+  // ── Validation helpers ────────────────────────────────────────
+  function validate() {
+    if (useManual) {
+      if (isNaN(currentCGPA) || currentCGPA < 0 || currentCGPA > 4)
+        return 'Current CGPA must be between 0 and 4.0';
+      if (isNaN(completedCredits) || completedCredits < 0)
+        return 'Completed credits must be 0 or more';
     }
-  };
+    const tc = parseFloat(targetCGPA);
+    if (isNaN(tc) || tc < 0 || tc > 4) return 'Target CGPA must be between 0 and 4.0';
+    const rc = parseFloat(remainingCredits);
+    if (isNaN(rc) || rc <= 0)          return 'Remaining credit hours must be greater than 0';
+    const rs = parseInt(remainingSemesters, 10);
+    if (isNaN(rs) || rs <= 0)          return 'Remaining semesters must be at least 1';
+    return null;
+  }
 
-  // Save plan to backend
-  const savePlan = async (planData) => {
-    try {
-      if (!studentId) {
-        console.error('Student ID not available');
-        return;
-      }
-
-      const payload = {
-        currentCGPA: parseNumber(currentCGPAInput, 'float'),
-        targetCGPA: parseNumber(targetCGPAInput, 'float'),
-        remainingCredits: parseNumber(remainingCreditsInput, 'int'),
-        remainingSemesters: parseNumber(remainingSemestersInput, 'int'),
-        totalDegreeCredits: parseNumber(totalDegreeCreditsInput, 'int'),
-        distributionMethod: distributionMethod,
-        isAchievable: planData.achievable,
-        requiredSGPA: planData.requiredSGPA || null,
-        maxPossibleCGPA: planData.maxPossibleCGPA || null,
-        semesters: planData.semesters || []
-      };
-
-      const response = await api.post(
-        `/students/${studentId}/target-cgpa-plan`,
-        payload
-      );
-
-      if (response.data.success) {
-        console.log('Plan saved successfully:', response.data.planId);
-      }
-    } catch (error) {
-      console.error('Error saving plan:', error);
+  function validateCustom() {
+    for (const s of customSems) {
+      if (!s.name.trim()) return 'All semester names are required';
+      if (isNaN(parseInt(s.credits, 10)) || parseInt(s.credits, 10) <= 0)
+        return 'All semester credit hours must be positive';
     }
-  };
+    const total = customSems.reduce((sum, s) => sum + parseInt(s.credits, 10), 0);
+    if (total !== parseInt(remainingCredits, 10))
+      return `Custom credit total (${total}) must equal remaining credits (${remainingCredits})`;
+    return null;
+  }
 
-  // Validation for initial inputs
-  const validateInputs = () => {
-    // Validate current CGPA
-    const currentCGPA = parseNumber(currentCGPAInput, 'float');
-    if (currentCGPAInput === '' || currentCGPA === null) {
-      setError('Please enter your current CGPA');
-      return false;
-    }
-    if (currentCGPA < 0 || currentCGPA > 4.0) {
-      setError('Current CGPA must be between 0 and 4.0');
-      return false;
-    }
-
-    // Validate target CGPA
-    const targetCGPA = parseNumber(targetCGPAInput, 'float');
-    if (targetCGPAInput === '' || targetCGPA === null) {
-      setError('Please enter your target CGPA');
-      return false;
-    }
-    if (targetCGPA < 0 || targetCGPA > 4.0) {
-      setError('Target CGPA must be between 0 and 4.0');
-      return false;
-    }
-
-    // Validate remaining credits
-    const remainingCredits = parseNumber(remainingCreditsInput, 'int');
-    if (remainingCreditsInput === '' || remainingCredits === null || remainingCredits <= 0) {
-      setError('Remaining credit hours must be greater than 0');
-      return false;
-    }
-
-    // Validate remaining semesters
-    const remainingSemesters = parseNumber(remainingSemestersInput, 'int');
-    if (remainingSemestersInput === '' || remainingSemesters === null || remainingSemesters <= 0) {
-      setError('Remaining semesters must be greater than 0');
-      return false;
-    }
-
-    // Validate total degree credits
-    const totalDegreeCredits = parseNumber(totalDegreeCreditsInput, 'int');
-    if (totalDegreeCreditsInput === '' || totalDegreeCredits === null || totalDegreeCredits <= 0) {
-      setError('Total degree credits must be greater than 0');
-      return false;
-    }
-
-    // Validate that remaining credits doesn't exceed total credits
-    if (remainingCredits > totalDegreeCredits) {
-      setError('Remaining credits cannot be greater than total degree credits');
-      return false;
-    }
-
-    setError('');
-    return true;
-  };
-
-  const handleInitialSubmit = (e) => {
+  // ── Handlers ──────────────────────────────────────────────────
+  function handleStep1(e) {
     e.preventDefault();
-    if (validateInputs()) {
-      setStep(2);
-    }
-  };
-
-  const handleMethodSelection = (method) => {
-    setDistributionMethod(method);
-    if (method === 'equal') {
-      calculateEqualDistribution();
-    } else {
-      initializeCustomSemesters();
-    }
-  };
-
-  const calculateEqualDistribution = () => {
-    const currentCGPA = parseNumber(currentCGPAInput, 'float');
-    const targetCGPA = parseNumber(targetCGPAInput, 'float');
-    const remainingCredits = parseNumber(remainingCreditsInput, 'int');
-    const remainingSemesters = parseNumber(remainingSemestersInput, 'int');
-    const totalDegreeCredits = parseNumber(totalDegreeCreditsInput, 'int');
-
-    const completedCredits = totalDegreeCredits - remainingCredits;
-    const creditsPerSemester = remainingCredits / remainingSemesters;
-
-    const requiredTotal =
-      (targetCGPA * totalDegreeCredits - currentCGPA * completedCredits) / remainingCredits;
-    const requiredSGPA = requiredTotal;
-
-    // Check if achievable
-    if (requiredSGPA > 4.0) {
-      const maxCGPA = (currentCGPA * completedCredits + 4.0 * remainingCredits) / totalDegreeCredits;
-      setResults({
-        achievable: false,
-        message: `❌ Unachievable! Maximum possible CGPA is ${maxCGPA.toFixed(2)}. Please lower your target.`,
-        requiredSGPA: null,
-        creditsPerSemester,
-        semesters: Array.from({ length: remainingSemesters }, (_, i) => ({
-          name: `Semester ${i + 1}`,
-          credits: creditsPerSemester.toFixed(2),
-          requiredSGPA: requiredSGPA.toFixed(2)
-        }))
-      });
-    } else if (requiredSGPA < 0) {
-      setResults({
-        achievable: true,
-        message: `✓ Already achieved! You're on track. Your current CGPA of ${currentCGPA.toFixed(2)} already exceeds your target of ${targetCGPA.toFixed(2)}.`,
-        requiredSGPA: 0,
-        creditsPerSemester,
-        semesters: Array.from({ length: remainingSemesters }, (_, i) => ({
-          name: `Semester ${i + 1}`,
-          credits: creditsPerSemester.toFixed(2),
-          requiredSGPA: '0.00'
-        }))
-      });
-    } else {
-      setResults({
-        achievable: true,
-        message: `Score approximately ${requiredSGPA.toFixed(2)} SGPA each semester to reach your target CGPA of ${targetCGPA.toFixed(2)}`,
-        requiredSGPA: requiredSGPA.toFixed(2),
-        creditsPerSemester,
-        semesters: Array.from({ length: remainingSemesters }, (_, i) => ({
-          name: `Semester ${i + 1}`,
-          credits: creditsPerSemester.toFixed(2),
-          requiredSGPA: requiredSGPA.toFixed(2)
-        }))
-      });
-    }
-
-    // Save plan to database
-    if (requiredSGPA <= 4.0 && requiredSGPA >= 0) {
-      savePlan({
-        achievable: true,
-        requiredSGPA: requiredSGPA.toFixed(2),
-        semesters: Array.from({ length: remainingSemesters }, (_, i) => ({
-          name: `Semester ${i + 1}`,
-          credits: creditsPerSemester.toFixed(2),
-          requiredSGPA: requiredSGPA.toFixed(2)
-        }))
-      });
-    } else if (requiredSGPA > 4.0) {
-      const maxCGPA = (currentCGPA * completedCredits + 4.0 * remainingCredits) / totalDegreeCredits;
-      savePlan({
-        achievable: false,
-        maxPossibleCGPA: maxCGPA.toFixed(2),
-        semesters: null
-      });
-    }
-
-    setStep(3);
-  };
-
-  const initializeCustomSemesters = () => {
-    const remainingSemesters = parseNumber(remainingSemestersInput, 'int');
-    const newSemesters = Array.from({ length: remainingSemesters }, (_, i) => ({
-      id: i,
-      name: `Semester ${i + 1}`,
-      credits: ''
-    }));
-    setSemesterData(newSemesters);
-    setStep(3);
-  };
-
-  const handleSemesterChange = (id, field, value) => {
-    setSemesterData(
-      semesterData.map((sem) =>
-        sem.id === id ? { ...sem, [field]: value } : sem
-      )
-    );
-  };
-
-  const validateCustomDistribution = () => {
-    for (let sem of semesterData) {
-      if (!sem.name.trim()) {
-        setError(`Semester name is required`);
-        return false;
-      }
-      const credits = parseNumber(sem.credits, 'int');
-      if (sem.credits === '' || credits === null || credits <= 0) {
-        setError(`All semesters must have credit hours greater than 0`);
-        return false;
-      }
-    }
-
-    const remainingCredits = parseNumber(remainingCreditsInput, 'int');
-    const totalCustomCredits = semesterData.reduce(
-      (sum, sem) => sum + parseNumber(sem.credits, 'int'),
-      0
-    );
-
-    if (totalCustomCredits !== remainingCredits) {
-      setError(
-        `Total custom credits (${totalCustomCredits}) must equal remaining credits (${remainingCredits})`
-      );
-      return false;
-    }
-
+    const err = validate();
+    if (err) { setError(err); return; }
     setError('');
-    return true;
-  };
+    setStep(2);
+  }
 
-  const calculateCustomDistribution = () => {
-    if (!validateCustomDistribution()) return;
+  function selectMethod(m) {
+    setMethod(m);
+    if (m === 'equal') {
+      runCalculation(m, []);
+    } else {
+      const rs = parseInt(remainingSemesters, 10);
+      setCustomSems(Array.from({ length: rs }, (_, i) => ({ name: `Semester ${i + 1}`, credits: '' })));
+      setStep(3);
+    }
+  }
 
-    const targetCGPA = parseNumber(targetCGPAInput, 'float');
-    const currentCGPA = parseNumber(currentCGPAInput, 'float');
-    const remainingCredits = parseNumber(remainingCreditsInput, 'int');
-    const totalDegreeCredits = parseNumber(totalDegreeCreditsInput, 'int');
-    const completedCredits = totalDegreeCredits - remainingCredits;
+  function runCalculation(m, sems) {
+    const calc = calculatePlan(
+      currentCGPA, completedCredits,
+      parseFloat(targetCGPA),
+      parseFloat(remainingCredits),
+      parseInt(remainingSemesters, 10),
+      m === 'custom' ? sems : []
+    );
+    setResult(calc);
+    setStep(3);
+  }
 
-    const requiredTotal =
-      (targetCGPA * totalDegreeCredits - currentCGPA * completedCredits) / remainingCredits;
+  function handleCustomSubmit(e) {
+    e.preventDefault();
+    const err = validateCustom();
+    if (err) { setError(err); return; }
+    setError('');
+    runCalculation('custom', customSems);
+  }
 
-    const results_semesters = semesterData.map((sem) => {
-      const semCredits = parseNumber(sem.credits, 'int');
-      const semRequiredSGPA = requiredTotal * (semCredits / remainingCredits);
-      return {
-        name: sem.name,
-        credits: semCredits,
-        requiredSGPA: semRequiredSGPA.toFixed(2),
-        achievable: semRequiredSGPA <= 4.0
+  async function handleSave() {
+    if (!studentId) { setError('You must be logged in to save a plan.'); return; }
+    setSaving(true);
+    setSaved(false);
+    try {
+      const body = {
+        currentCGPA:       currentCGPA,
+        completedCredits:  completedCredits,
+        targetCGPA:        parseFloat(targetCGPA),
+        remainingCredits:  parseInt(remainingCredits, 10),
+        remainingSemesters:parseInt(remainingSemesters, 10),
+        distributionMethod:method,
+        semesters:         method === 'custom' ? customSems : []
       };
-    });
-
-    const allAchievable = results_semesters.every((sem) => sem.achievable);
-    const maxCGPA = (currentCGPA * completedCredits + 4.0 * remainingCredits) / totalDegreeCredits;
-
-    if (!allAchievable) {
-      setResults({
-        achievable: false,
-        message: `❌ Unachievable! Maximum possible CGPA is ${maxCGPA.toFixed(2)}. Please adjust your distribution.`,
-        semesters: results_semesters,
-        custom: true
+      const res = await fetchWithToken(`${API}/students/${studentId}/target-cgpa-plan`, {
+        method: 'POST',
+        body: JSON.stringify(body)
       });
-      savePlan({
-        achievable: false,
-        maxPossibleCGPA: maxCGPA.toFixed(2),
-        semesters: results_semesters
-      });
-    } else {
-      setResults({
-        achievable: true,
-        message: `Your custom distribution plan is achievable with the following semester requirements:`,
-        semesters: results_semesters,
-        custom: true
-      });
-      savePlan({
-        achievable: true,
-        semesters: results_semesters
-      });
-    }
-  };
+      if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
+      else {
+        const data = await res.json();
+        setError(data.message || 'Failed to save plan.');
+      }
+    } catch { setError('Network error while saving.'); }
+    finally { setSaving(false); }
+  }
 
-  const resetCalculator = () => {
-    setStep(1);
-    setCurrentCGPAInput('');
-    setTargetCGPAInput('');
-    setRemainingCreditsInput('');
-    setRemainingSemestersInput('');
-    setTotalDegreeCreditsInput('120');
-    setDistributionMethod(null);
-    setSemesterData([]);
-    setResults(null);
-    setError('');
-  };
+  async function handleDelete() {
+    if (!studentId) return;
+    try {
+      await fetchWithToken(`${API}/students/${studentId}/target-cgpa-plan`, { method: 'DELETE' });
+      handleReset();
+    } catch { setError('Failed to delete plan.'); }
+  }
 
+  function handleReset() {
+    setStep(1); setMethod(null); setResult(null); setError('');
+    setTargetCGPA(''); setRemainingCredits(''); setRemainingSemesters('');
+    setCustomSems([]); setManualCurrentCGPA(''); setManualCompleted('');
+    setSaved(false);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────
   return (
     <div className="page-container">
-      <h1 className="page-title">Target CGPA Calculator</h1>
-      <p className="description">Plan your academic path to achieve your target CGPA</p>
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pop { 0%{transform:scale(.95);opacity:0} 100%{transform:scale(1);opacity:1} }
+        .cgpa-card { animation: slideUp .35s ease both; }
+        .method-btn {
+          cursor: pointer;
+          text-align: left;
+          transition: all .25s ease;
+          outline: none;
+          box-shadow: var(--shadow-sm);
+        }
+        .method-btn:hover {
+          transform: translateY(-3px);
+          box-shadow: var(--shadow) !important;
+          border-color: var(--accent) !important;
+        }
+      `}</style>
 
+      {/* ── Page header ──────────────────────────────────────── */}
+      <div className="page-header">
+        <h1 className="page-title">🎯 Target CGPA Calculator</h1>
+        <p className="description">
+          Plan exactly what SGPA you need each semester to hit your goal — with mathematically correct results.
+        </p>
+      </div>
+
+      {/* ── Live CGPA banner ─────────────────────────────────── */}
+      <InfoBanner currentCGPA={liveCGPA} completedCredits={liveCredits} loading={liveLoading} />
+
+      {/* ── Step indicator ───────────────────────────────────── */}
+      <StepIndicator step={step} />
+
+      {/* ══════════════════════════════════════════════════════
+          STEP 1 – Input form
+      ═══════════════════════════════════════════════════════ */}
       {step === 1 && (
-        <div className="card">
-          <p style={{ marginBottom: '24px', fontSize: '16px', color: '#666', fontWeight: '500' }}>
-            Please provide your academic information to calculate your required GPA path.
+        <div className="card cgpa-card">
+          <h2 style={{ marginBottom: 6, fontSize: 20, color: 'var(--text-primary)', fontFamily: "'Playfair Display', serif" }}>Academic Information</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 28 }}>
+            {liveLoading ? 'Fetching your live CGPA…' : liveCGPA !== null
+              ? `Your current CGPA (${liveCGPA.toFixed(2)}) and completed credits (${liveCredits}) are automatically loaded from your grades.`
+              : 'No graded courses found — please enter your current CGPA manually.'}
           </p>
-          <form onSubmit={handleInitialSubmit}>
-            <div style={{ backgroundColor: '#f0f8ff', padding: '16px', borderRadius: '8px', marginBottom: '24px', borderLeft: '4px solid #2196F3' }}>
-              <p style={{ margin: '0', fontSize: '14px', color: '#1976d2', fontWeight: '500' }}>
-                ℹ️ Required Fields: Start by entering your current and target CGPA
-              </p>
-            </div>
 
-            <div className="form-group">
-              <label htmlFor="currentCGPA">
-                <span style={{ color: '#d32f2f' }}>*</span> Current CGPA (0.0 - 4.0)
-              </label>
-              <input
-                id="currentCGPA"
-                type="number"
-                min="0"
-                max="4"
-                step="any"
-                value={currentCGPAInput}
-                onChange={(e) => setCurrentCGPAInput(e.target.value)}
-                placeholder="e.g., 3.2"
-                required
-              />
-              <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
-                Your cumulative GPA as of now
-              </small>
-            </div>
+          {/* Manual override toggle */}
+          {liveCGPA !== null && !liveLoading && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={useManual} onChange={e => setUseManual(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
+              Override with custom CGPA &amp; credits
+            </label>
+          )}
 
-            <div className="form-group">
-              <label htmlFor="targetCGPA">
-                <span style={{ color: '#d32f2f' }}>*</span> Target CGPA (0.0 - 4.0)
-              </label>
-              <input
-                id="targetCGPA"
-                type="number"
-                min="0"
-                max="4"
-                step="any"
-                value={targetCGPAInput}
-                onChange={(e) => setTargetCGPAInput(e.target.value)}
-                placeholder="e.g., 3.4"
-                required
-              />
-              <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
-                Your desired final CGPA
-              </small>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="remainingCredits">
-                <span style={{ color: '#d32f2f' }}>*</span> Remaining Credit Hours
-              </label>
-              <input
-                id="remainingCredits"
-                type="number"
-                min="1"
-                step="1"
-                value={remainingCreditsInput}
-                onChange={(e) => setRemainingCreditsInput(e.target.value)}
-                placeholder="e.g., 100"
-                required
-              />
-              <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
-                Total credit hours remaining in your degree
-              </small>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="remainingSemesters">
-                <span style={{ color: '#d32f2f' }}>*</span> Remaining Semesters
-              </label>
-              <input
-                id="remainingSemesters"
-                type="number"
-                min="1"
-                step="1"
-                value={remainingSemestersInput}
-                onChange={(e) => setRemainingSemestersInput(e.target.value)}
-                placeholder="e.g., 4"
-                required
-              />
-              <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
-                How many semesters you have left
-              </small>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="totalDegreeCredits">Total Degree Credits</label>
-              <input
-                id="totalDegreeCredits"
-                type="number"
-                min="1"
-                step="1"
-                value={totalDegreeCreditsInput}
-                onChange={(e) => setTotalDegreeCreditsInput(e.target.value)}
-              />
-              <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
-                Typically 120 for bachelor's degrees
-              </small>
-            </div>
-
-            {error && (
-              <div style={{
-                backgroundColor: '#ffebee',
-                color: '#d32f2f',
-                padding: '12px',
-                borderRadius: '4px',
-                marginBottom: '16px',
-                borderLeft: '4px solid #d32f2f',
-                fontSize: '14px'
-              }}>
-                ❌ {error}
+          <form onSubmit={handleStep1}>
+            {useManual && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: '16px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 16 }}>
+                <InputCard
+                  id="manCGPA" label="Your Current CGPA" value={manualCurrentCGPA}
+                  onChange={e => setManualCurrentCGPA(e.target.value)}
+                  placeholder="e.g. 3.10" min="0" max="4" hint="Between 0.0 and 4.0"
+                />
+                <InputCard
+                  id="manCred" label="Completed Credit Hours" value={manualCompleted}
+                  onChange={e => setManualCompleted(e.target.value)}
+                  placeholder="e.g. 60" min="0" hint="Total credits completed so far"
+                />
               </div>
             )}
 
-            <button type="submit" style={{ marginTop: '16px' }}>
-              Continue to Planning Method
-            </button>
+            <div className="inputs-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <InputCard
+                id="targetCGPA" label="🎯 Target CGPA" value={targetCGPA}
+                onChange={e => setTargetCGPA(e.target.value)}
+                placeholder="e.g. 3.50" min="0" max="4" hint="Your desired final CGPA (0–4.0)"
+              />
+              <InputCard
+                id="remCredits" label="Remaining Credit Hours" value={remainingCredits}
+                onChange={e => setRemainingCredits(e.target.value)}
+                placeholder="e.g. 80" min="1" step="1" hint="Total credits left to complete"
+              />
+              <div style={{ gridColumn: 'span 2' }}>
+                <InputCard
+                  id="remSems" label="Remaining Semesters" value={remainingSemesters}
+                  onChange={e => setRemainingSemesters(e.target.value)}
+                  placeholder="e.g. 4" min="1" step="1" hint="How many semesters left"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="error" style={{ marginBottom: 16 }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+              <button type="submit" style={{ flex: 1, padding: '12px', justifyContent: 'center' }}>
+                Continue → Choose Method
+              </button>
+              {result && (
+                <button type="button" className="btn-secondary" onClick={handleReset}>
+                  Reset
+                </button>
+              )}
+            </div>
           </form>
         </div>
       )}
 
+      {/* ══════════════════════════════════════════════════════
+          STEP 2 – Method selection
+      ═══════════════════════════════════════════════════════ */}
       {step === 2 && (
-        <div className="card">
-          <h2 style={{ marginBottom: '24px' }}>Choose Planning Method</h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '16px',
-              marginBottom: '24px'
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => handleMethodSelection('equal')}
-              style={{
-                padding: '24px',
-                border: '2px solid #ddd',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                backgroundColor: '#f5f5f5',
-                fontSize: '16px',
-                fontWeight: '500',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={(e) => (e.target.style.borderColor = '#1976d2')}
-              onMouseLeave={(e) => (e.target.style.borderColor = '#ddd')}
-            >
-              📊 Equal Distribution
-              <p style={{ fontSize: '13px', marginTop: '8px', fontWeight: 'normal', color: '#666' }}>
-                Divide credits equally across all semesters
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleMethodSelection('custom')}
-              style={{
-                padding: '24px',
-                border: '2px solid #ddd',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                backgroundColor: '#f5f5f5',
-                fontSize: '16px',
-                fontWeight: '500',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={(e) => (e.target.style.borderColor = '#1976d2')}
-              onMouseLeave={(e) => (e.target.style.borderColor = '#ddd')}
-            >
-              ✏️ Custom Distribution
-              <p style={{ fontSize: '13px', marginTop: '8px', fontWeight: 'normal', color: '#666' }}>
-                Specify credits for each semester
-              </p>
-            </button>
+        <div className="card cgpa-card">
+          <h2 style={{ marginBottom: 8, fontSize: 20, color: 'var(--text-primary)', fontFamily: "'Playfair Display', serif" }}>Choose Distribution Method</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 28 }}>
+            How would you like to distribute your remaining <strong>{remainingCredits} credits</strong> across <strong>{remainingSemesters} semesters</strong>?
+          </p>
+
+          <div className="method-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+            {[
+              {
+                key: 'equal',
+                icon: '⚖️',
+                title: 'Equal Distribution',
+                desc: `Split ${remainingCredits} credits equally — ${(parseFloat(remainingCredits) / parseInt(remainingSemesters, 10)).toFixed(1)} credits per semester. Fastest calculation.`,
+                accent: 'var(--accent)'
+              },
+              {
+                key: 'custom',
+                icon: '✏️',
+                title: 'Custom Distribution',
+                desc: 'Specify exact credit hours for each semester — useful if semesters vary in load.',
+                accent: 'var(--accent-gold)'
+              }
+            ].map(opt => (
+              <button key={opt.key} className="method-btn" type="button" onClick={() => selectMethod(opt.key)}
+                style={{
+                  padding: '28px 24px', border: `1.5px solid var(--border)`, borderRadius: 16,
+                  background: 'var(--bg-tertiary)', color: 'var(--text-primary)'
+                }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>{opt.icon}</div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', marginBottom: 8 }}>{opt.title}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{opt.desc}</div>
+              </button>
+            ))}
           </div>
-          <button
-            type="button"
-            onClick={resetCalculator}
-            style={{ backgroundColor: '#f5f5f5', color: '#333' }}
-          >
+
+          <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
             ← Back
           </button>
         </div>
       )}
 
-      {step === 3 && distributionMethod === 'equal' && results && (
-        <div className="card">
-          <div
-            style={{
-              padding: '16px',
-              borderRadius: '8px',
-              backgroundColor: results.achievable ? '#e8f5e9' : '#ffebee',
-              marginBottom: '24px',
-              borderLeft: `4px solid ${results.achievable ? '#4caf50' : '#f44336'}`
-            }}
-          >
-            <p style={{ margin: '0', fontSize: '16px', fontWeight: '500' }}>
-              {results.message}
-            </p>
-          </div>
+      {/* ══════════════════════════════════════════════════════
+          STEP 3A – Custom semester input form
+      ═══════════════════════════════════════════════════════ */}
+      {step === 3 && method === 'custom' && !result && (
+        <div className="card cgpa-card">
+          <h2 style={{ marginBottom: 4, fontSize: 20, color: 'var(--text-primary)', fontFamily: "'Playfair Display', serif" }}>Custom Semester Credits</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+            Total to distribute: <strong style={{ color: 'var(--accent)' }}>{remainingCredits} credits</strong>.
+            Credits sum must match exactly.
+          </p>
 
-          <div style={{ marginBottom: '24px' }}>
-            <h3>Semester Requirements</h3>
-            <div
-              style={{
-                display: 'grid',
-                gap: '12px',
-                marginTop: '12px'
-              }}
-            >
-              {results.semesters.map((sem, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: '16px',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: '8px',
-                    borderLeft: `4px solid ${parseFloat(sem.requiredSGPA) > 4 ? '#f44336' : '#4caf50'}`
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <p style={{ margin: '0 0 4px 0', fontWeight: '600' }}>{sem.name}</p>
-                      <p style={{ margin: '0', color: '#666', fontSize: '14px' }}>
-                        Credits: {sem.credits}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: '0', fontSize: '18px', fontWeight: '700', color: '#1976d2' }}>
-                        {sem.requiredSGPA} SGPA
-                      </p>
-                      {parseFloat(sem.requiredSGPA) > 4 && (
-                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#f44336' }}>
-                          Unachievable
-                        </p>
-                      )}
-                    </div>
+          <form onSubmit={handleCustomSubmit}>
+            <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '6px', marginBottom: '16px' }}>
+              {customSems.map((sem, i) => (
+                <div key={i} style={{
+                  display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end',
+                  padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 12, marginBottom: 12,
+                  border: '1px solid var(--border)'
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <InputCard
+                      id={`sn-${i}`} type="text" label={`Semester ${i + 1} Name`}
+                      value={sem.name} placeholder="e.g. Spring 2026"
+                      onChange={e => setCustomSems(cs => cs.map((s, j) => j === i ? { ...s, name: e.target.value } : s))}
+                    />
+                    <InputCard
+                      id={`sc-${i}`} label="Credit Hours"
+                      value={sem.credits} placeholder="e.g. 18" min="1" step="1"
+                      onChange={e => setCustomSems(cs => cs.map((s, j) => j === i ? { ...s, credits: e.target.value } : s))}
+                    />
+                  </div>
+                  <div style={{ paddingBottom: 16, color: customSems.reduce((s, x) => s + (parseInt(x.credits, 10) || 0), 0) > parseInt(remainingCredits, 10) ? 'var(--red)' : 'var(--success)', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {parseInt(sem.credits, 10) || 0} cr
                   </div>
                 </div>
               ))}
             </div>
-          </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              type="button"
-              onClick={resetCalculator}
-              style={{ backgroundColor: '#f5f5f5', color: '#333' }}
-            >
-              ← Start Over
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 3 && distributionMethod === 'custom' && !results && (
-        <div className="card">
-          <h2 style={{ marginBottom: '24px' }}>Enter Credits per Semester</h2>
-          <p style={{ marginBottom: '24px', color: '#666' }}>
-            Total credits to distribute: <strong>{remainingCreditsInput}</strong>
-          </p>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              calculateCustomDistribution();
-            }}
-          >
-            {semesterData.map((sem, idx) => (
-              <div
-                key={sem.id}
-                style={{
-                  padding: '16px',
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: '8px',
-                  marginBottom: '16px'
-                }}
-              >
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group">
-                    <label htmlFor={`semName-${sem.id}`}>Semester Name</label>
-                    <input
-                      id={`semName-${sem.id}`}
-                      type="text"
-                      value={sem.name}
-                      onChange={(e) => handleSemesterChange(sem.id, 'name', e.target.value)}
-                      placeholder="e.g., Spring 2026"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor={`semCredits-${sem.id}`}>Credit Hours</label>
-                    <input
-                      id={`semCredits-${sem.id}`}
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={sem.credits}
-                      onChange={(e) => handleSemesterChange(sem.id, 'credits', e.target.value)}
-                      placeholder="e.g., 15"
-                      required
-                    />
-                  </div>
+            {/* Credit tally */}
+            {(() => {
+              const used = customSems.reduce((s, x) => s + (parseInt(x.credits, 10) || 0), 0);
+              const rem  = parseInt(remainingCredits, 10);
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px', borderRadius: 10, background: used === rem ? 'var(--success-bg)' : 'var(--red-bg)', marginBottom: 16, border: `1px solid ${used === rem ? 'rgba(123, 200, 164, 0.3)' : 'rgba(249, 112, 102, 0.3)'}` }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Credit Total</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: used === rem ? 'var(--success)' : 'var(--red)', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {used} / {rem} {used === rem ? '✓' : ''}
+                  </span>
                 </div>
+              );
+            })()}
+
+            {error && (
+              <div className="error" style={{ marginBottom: 16 }}>
+                ⚠️ {error}
               </div>
-            ))}
+            )}
 
-            {error && <p style={{ color: '#d32f2f', marginBottom: '12px' }}>{error}</p>}
-
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button type="submit">Calculate Requirements</button>
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                style={{ backgroundColor: '#f5f5f5', color: '#333' }}
-              >
-                ← Back
-              </button>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button type="submit" style={{ flex: 1, padding: '12px', justifyContent: 'center' }}>Calculate Requirements</button>
+              <button type="button" className="btn-secondary" onClick={() => setStep(2)}>← Back</button>
             </div>
           </form>
         </div>
       )}
 
-      {step === 3 && distributionMethod === 'custom' && results && (
-        <div className="card">
-          <div
-            style={{
-              padding: '16px',
-              borderRadius: '8px',
-              backgroundColor: results.achievable ? '#e8f5e9' : '#ffebee',
-              marginBottom: '24px',
-              borderLeft: `4px solid ${results.achievable ? '#4caf50' : '#f44336'}`
-            }}
-          >
-            <p style={{ margin: '0', fontSize: '16px', fontWeight: '500' }}>
-              {results.message}
-            </p>
-          </div>
+      {/* ══════════════════════════════════════════════════════
+          STEP 3B – Results
+      ═══════════════════════════════════════════════════════ */}
+      {step === 3 && result && (
+        <div className="cgpa-card" style={{ animation: 'pop .35s ease both' }}>
 
-          <div style={{ marginBottom: '24px' }}>
-            <h3>Your Semester Plan</h3>
-            <div
-              style={{
-                display: 'grid',
-                gap: '12px',
-                marginTop: '12px'
-              }}
-            >
-              {results.semesters.map((sem, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: '16px',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: '8px',
-                    borderLeft: `4px solid ${sem.achievable ? '#4caf50' : '#f44336'}`
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <p style={{ margin: '0 0 4px 0', fontWeight: '600' }}>{sem.name}</p>
-                      <p style={{ margin: '0', color: '#666', fontSize: '14px' }}>
-                        Credits: {sem.credits}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: '0', fontSize: '18px', fontWeight: '700', color: '#1976d2' }}>
-                        {sem.requiredSGPA} SGPA
-                      </p>
-                      {!sem.achievable && (
-                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#f44336' }}>
-                          Unachievable
-                        </p>
-                      )}
-                    </div>
+          {/* ── Status banner ──────────────────────────────── */}
+          <div style={{
+            borderRadius: 16, padding: '24px 28px', marginBottom: 24,
+            background: result.achievable
+              ? 'linear-gradient(135deg, rgba(123,200,164,0.15) 0%, rgba(108,155,207,0.1) 100%)'
+              : 'linear-gradient(135deg, rgba(249,112,102,0.15) 0%, rgba(232,168,124,0.1) 100%)',
+            border: result.achievable
+              ? '1.5px solid var(--success)'
+              : '1.5px solid var(--red)',
+            boxShadow: result.achievable
+              ? '0 8px 32px rgba(123, 200, 164, 0.08)'
+              : '0 8px 32px rgba(249, 112, 102, 0.08)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+              <div style={{ fontSize: 36, lineHeight: 1 }}>{result.achievable ? '🎯' : '⚠️'}</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--text-primary)', marginBottom: 6, fontFamily: "'Playfair Display', serif" }}>
+                  {result.achievable ? 'Target Achievable!' : 'Target Unachievable'}
+                </div>
+                <div style={{ fontSize: 14, color: result.achievable ? 'var(--text-secondary)' : 'var(--red)', lineHeight: 1.6 }}>
+                  {result.message}
+                </div>
+              </div>
+            </div>
+
+            {/* Big SGPA number */}
+            {result.achievable && result.requiredSGPA !== null && (
+              <div style={{ marginTop: 20, display: 'flex', gap: 40, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--accent-gold)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Required SGPA (every semester)</div>
+                  <div style={{ fontSize: 44, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
+                    {result.requiredSGPA.toFixed(2)}
                   </div>
                 </div>
-              ))}
-            </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Max Possible CGPA</div>
+                  <div style={{ fontSize: 44, fontWeight: 800, color: 'var(--success)', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
+                    {result.maxPossible?.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!result.achievable && (
+              <div style={{ marginTop: 16, display: 'flex', gap: 32 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Maximum Possible CGPA</div>
+                  <div style={{ fontSize: 44, fontWeight: 800, color: 'var(--red)', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
+                    {result.maxPossible?.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              type="button"
-              onClick={resetCalculator}
-              style={{ backgroundColor: '#f5f5f5', color: '#333' }}
-            >
-              ← Start Over
+          {/* ── Semester breakdown ─────────────────────────── */}
+          {result.semesters && result.semesters.length > 0 && (
+            <div className="card" style={{ marginBottom: 20 }}>
+              <h3 style={{ marginBottom: 16, fontSize: 16, color: 'var(--text-primary)', fontFamily: "'Playfair Display', serif" }}>
+                📅 Semester Breakdown
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {result.semesters.map((sem, i) => (
+                  <SemesterResultCard key={i} sem={sem} index={i} />
+                ))}
+              </div>
+
+              {result.achievable && (
+                <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--accent-glow)', borderRadius: 10, fontSize: 13, color: 'var(--text-primary)', border: '1px solid var(--border)', lineHeight: 1.6 }}>
+                  ℹ️ <strong>Why the same SGPA for all semesters?</strong> Scoring identical SGPA each semester automatically produces exactly your target CGPA, regardless of how credits are split between semesters. This is mathematically correct.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Action buttons ─────────────────────────────── */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button onClick={handleSave} disabled={saving}
+              style={{ flex: 1, minWidth: 140, background: saved ? 'var(--success)' : 'var(--accent)', color: '#0B1120', opacity: saving ? .7 : 1 }}>
+              {saving ? '⏳ Saving…' : saved ? '✓ Saved!' : '💾 Save Plan'}
             </button>
+            <button className="btn-secondary" onClick={() => setStep(2)}>
+              ← Change Method
+            </button>
+            <button className="btn-secondary" onClick={handleReset} style={{ color: 'var(--red)', borderColor: 'rgba(249, 112, 102, 0.3)' }}>
+              🗑 Reset
+            </button>
+            {studentId && (
+              <button className="btn-secondary" onClick={handleDelete} style={{ color: 'var(--text-muted)' }}>
+                Delete Saved Plan
+              </button>
+            )}
           </div>
+
+          {error && (
+            <div className="error" style={{ marginTop: 12 }}>
+              ⚠️ {error}
+            </div>
+          )}
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════
+          Formula reference card
+      ═══════════════════════════════════════════════════════ */}
+      <div className="card" style={{ marginTop: 24, background: 'linear-gradient(135deg, var(--surface), var(--bg-tertiary))', border: '1px solid var(--border)' }}>
+        <h3 style={{ fontSize: 14, color: 'var(--accent)', marginBottom: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5 }}>
+          📐 Formula Reference
+        </h3>
+        <div className="formula-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 16 }}>
+          {[
+            { label: 'Required SGPA', formula: '(Target × Total − Current × Completed) ÷ Remaining', color: 'var(--accent)' },
+            { label: 'Max Possible CGPA', formula: '(Current × Completed + 4.0 × Remaining) ÷ Total', color: 'var(--accent-gold)' },
+            { label: 'Total Credits', formula: 'Completed Credits + Remaining Credits', color: 'var(--success)' }
+          ].map(f => (
+            <div key={f.label} style={{ padding: '12px 14px', background: 'var(--bg-primary)', borderRadius: 10, border: `1.5px solid var(--border)` }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: f.color, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>{f.label}</div>
+              <code style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.6, fontFamily: "'JetBrains Mono', monospace" }}>{f.formula}</code>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--accent-glow)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)' }}>
+          ⚡ <strong>Testing:</strong> CGPA 3.1, Completed 20cr, Target 3.5, Remaining 100cr → Required SGPA = <strong>3.58</strong> ✓
+        </div>
+      </div>
+      <style>{`
+        @media (max-width: 600px) {
+          .inputs-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .inputs-grid > div {
+            grid-column: span 1 !important;
+          }
+          .method-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .formula-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
-
-export default TargetCGPACalculator;
