@@ -30,7 +30,7 @@ const addOrUpdateGrade = async (req, res) => {
         console.error('Add/update grade error:', error);
         // FK violation,invalid letter_grade not in GradePoints table
         if (error.number === 547) {
-            return res.status(400).json({ message: 'Invalid letter grade. Must be one of: A, A-, B+, B, B-, C+, C, F' });
+            return res.status(400).json({ message: 'Invalid letter grade. Must be one of: A+, A, A-, B+, B, B-, C+, C, C-, D+, D, F' });
         }
         res.status(500).json({ message: 'Server error' });
     }
@@ -80,7 +80,7 @@ const updateGrade = async (req, res) => {
     } catch (error) {
         console.error('Update grade error:', error);
         if (error.number === 547) {
-            return res.status(400).json({ message: 'Invalid letter grade. Must be one of: A, A-, B+, B, B-, C+, C, F' });
+            return res.status(400).json({ message: 'Invalid letter grade. Must be one of: A+, A, A-, B+, B, B-, C+, C, C-, D+, D, F' });
         }
         res.status(500).json({ message: 'Server error' });
     }
