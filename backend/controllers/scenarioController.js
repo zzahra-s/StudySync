@@ -143,7 +143,7 @@ const addCourseToScenario = async (req, res) => {
         //fk violation,invalid grade or course_id
         if (error.number === 547) {
             return res.status(400).json({
-                message: 'Invalid expected_grade or course_id. Grade must be one of: A, A-, B+, B, B-, C+, C, F',
+                message: 'Invalid expected_grade or course_id. Grade must be one of: A+, A, A-, B+, B, B-, C+, C, C-, D+, D, F',
             });
         }
         res.status(500).json({ message: 'Server error' });
