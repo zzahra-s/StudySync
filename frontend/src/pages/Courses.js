@@ -140,7 +140,7 @@ const Courses = () => {
           </div>
           <button type="submit">{editId ? 'Update' : 'Add'}</button>
           {editId && (
-            <button type="button" onClick={() => { setEditId(null); setName(''); setCreditHours(''); }} style={{ background: '#6c757d' }}>Cancel</button>
+            <button type="button" className="btn-secondary" onClick={() => { setEditId(null); setName(''); setCreditHours(''); }}>Cancel</button>
           )}
         </form>
       </div>
@@ -152,10 +152,10 @@ const Courses = () => {
               <div>
                 <strong>{course.course_name || course.name}</strong> - {course.credit_hours || course.creditHours} Credits
               </div>
-              <div>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => navigate(`/courses/${course.course_id || course.id}/grade`)}>Enter Grade</button>
-                <button onClick={() => handleEditClick(course)} style={{ background: '#ffc107', color: 'black' }}>Edit</button>
-                <button onClick={() => handleDelete(course.course_id || course.id)} style={{ background: '#dc3545' }}>Delete</button>
+                <button className="btn-secondary" onClick={() => handleEditClick(course)}>Edit</button>
+                <button className="btn-danger" onClick={() => handleDelete(course.course_id || course.id)}>Delete</button>
               </div>
             </div>
           ))
