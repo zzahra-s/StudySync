@@ -109,13 +109,17 @@ create table ScenarioCourses (
 -- SAMPLE DATA
 
 insert into GradePoints (letter_grade, grade_points) VALUES
+('A+', 4.00),
 ('A',  4.00),
-('A-', 3.67),
-('B+', 3.33),
+('A-', 3.70),
+('B+', 3.30),
 ('B',  3.00),
-('B-', 2.67),
-('C+', 2.33),
+('B-', 2.70),
+('C+', 2.30),
 ('C',  2.00),
+('C-', 1.70),
+('D+', 1.30),
+('D',  1.00),
 ('F',  0.00);
 select * from GradePoints;
 
@@ -155,12 +159,12 @@ INSERT INTO Courses (semester_id, course_code, course_name, credit_hours, instru
 select * from Courses;
 
 INSERT INTO Grades (course_id, letter_grade, comments) VALUES
-(1, 'A',  'Excellent work'),
+(1, 'A+', 'Excellent work'),
 (2, 'B+', 'Solidify with book content'),
 (5, 'A-', 'Solid understanding'),
-(7, 'A-', 'Good grasp of OOP'),
-(8, 'B+', 'Needs improvement'),
-(11, 'B', 'Average performance');
+(7, 'A', 'Good grasp of OOP'),
+(8, 'B', 'Needs improvement'),
+(11, 'B-', 'Average performance');
 select * from Grades;
 
 INSERT INTO Deadlines (course_id, title, due_date, status, priority, allocated_study_hours) VALUES
@@ -198,9 +202,9 @@ INSERT INTO GPAScenarios (student_id, scenario_name) VALUES
 select * from GPAScenarios;
 
 INSERT INTO ScenarioCourses (scenario_id, course_id, expected_grade) VALUES
-(1, 3, 'A'),
+(1, 3, 'A+'),
 (1, 4, 'A-'),
-(2, 5, 'A'),
+(2, 5, 'A+'),
 (3, 9, 'A'),
 (3, 10, 'A-'),
 (4, 12, 'B+');
