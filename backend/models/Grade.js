@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require('../config/database');
+const { sql, poolPromise } = require('../db');
 
 class Grade {
     static async createOrUpdate(gradeData) {
@@ -28,8 +28,8 @@ class Grade {
                 .input('comments', sql.VarChar(500), comments || null)
                 .query(`
                     INSERT INTO Grades (course_id, letter_grade, comments)
-                    OUTPUT INSERTED.grade_id
                     VALUES (@course_id, @letter_grade, @comments)
+                    RETURNING grade_id
                 `);
             return { id: result.recordset[0].grade_id, updated: false };
         }

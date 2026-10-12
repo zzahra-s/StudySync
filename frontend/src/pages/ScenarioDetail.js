@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 const VALID_GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F'];
 
@@ -37,8 +38,8 @@ const ScenarioDetail = () => {
     setError('');
     try {
       const [sRes, semRes] = await Promise.all([
-        fetchWithToken(`http://localhost:5001/api/scenarios/${scenarioId}`),
-        fetchWithToken(`http://localhost:5001/api/students/${studentId}/semesters`)
+        fetchWithToken(`${API_BASE_URL}/scenarios/${scenarioId}`),
+        fetchWithToken(`${API_BASE_URL}/students/${studentId}/semesters`)
       ]);
 
       const sData = await sRes.json();
@@ -62,7 +63,7 @@ const ScenarioDetail = () => {
 
   const fetchSemesterCourses = async (semesterId) => {
     try {
-      const cRes = await fetchWithToken(`http://localhost:5001/api/semesters/${semesterId}/courses`);
+      const cRes = await fetchWithToken(`${API_BASE_URL}/semesters/${semesterId}/courses`);
       const cData = await cRes.json();
       if (cRes.ok) setSemesterCourses(cData);
       else setSemesterCourses([]);
@@ -73,7 +74,7 @@ const ScenarioDetail = () => {
 
   const loadProjection = async () => {
     try {
-      const pRes = await fetchWithToken(`http://localhost:5001/api/scenarios/${scenarioId}/projection`);
+      const pRes = await fetchWithToken(`${API_BASE_URL}/scenarios/${scenarioId}/projection`);
       const pData = await pRes.json();
       if (pRes.ok) setProjection(pData);
     } catch (_) {}
@@ -83,7 +84,7 @@ const ScenarioDetail = () => {
     e.preventDefault();
     setError('');
     setMessage('');
-    const res = await fetchWithToken(`http://localhost:5001/api/scenarios/${scenarioId}`, {
+    const res = await fetchWithToken(`${API_BASE_URL}/scenarios/${scenarioId}`, {
       method: 'PUT',
       body: JSON.stringify({ scenario_name: nameInput }),
     });
@@ -109,7 +110,7 @@ const ScenarioDetail = () => {
       setError('Please select a course.');
       return;
     }
-    const res = await fetchWithToken(`http://localhost:5001/api/scenarios/${scenarioId}/courses`, {
+    const res = await fetchWithToken(`${API_BASE_URL}/scenarios/${scenarioId}/courses`, {
       method: 'POST',
       body: JSON.stringify({ course_id: parseInt(newCourseId, 10), expected_grade: newGrade }),
     });
@@ -128,7 +129,7 @@ const ScenarioDetail = () => {
     setError('');
     setMessage('');
     const res = await fetchWithToken(
-      `http://localhost:5001/api/scenarios/${scenarioId}/courses/${courseId}`,
+      `${API_BASE_URL}/scenarios/${scenarioId}/courses/${courseId}`,
       { method: 'DELETE' }
     );
     const data = await res.json();

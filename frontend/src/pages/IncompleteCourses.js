@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 const IncompleteCourses = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -15,7 +16,7 @@ const IncompleteCourses = () => {
     const fetchCourses = async () => {
       try {
         const res = await fetchWithToken(
-          `http://localhost:5001/api/students/${studentId}/incomplete-courses`
+          `${API_BASE_URL}/students/${studentId}/incomplete-courses`
         );
         const data = await res.json();
         if (res.ok) {

@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require('../config/Database');
+const { sql, poolPromise } = require('../db');
 
 class Student {
     static async create(studentData) {
@@ -11,8 +11,8 @@ class Student {
             .input('password', sql.VarChar(255), password)
             .query(`
                 INSERT INTO Students (full_name, roll_number, email, password)
-                OUTPUT INSERTED.student_id
                 VALUES (@full_name, @roll_number, @email, @password)
+                RETURNING student_id
             `);
         return result.recordset[0].student_id;
     }
@@ -21,7 +21,7 @@ class Student {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('email', sql.VarChar(100), email)
-            .query('SELECT * FROM Students WHERE email = @email');
+            .query('SELECT * FROM Students WHERE LOWER(email) = LOWER(@email)');
         return result.recordset[0];
     }
 
@@ -29,7 +29,7 @@ class Student {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('identifier', sql.VarChar(100), identifier)
-            .query('SELECT * FROM Students WHERE email = @identifier OR roll_number = @identifier');
+            .query('SELECT * FROM Students WHERE LOWER(email) = LOWER(@identifier) OR LOWER(roll_number) = LOWER(@identifier)');
         return result.recordset[0];
     }
 

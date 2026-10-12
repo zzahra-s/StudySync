@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 // Grade mapping with corresponding grade points
 const GRADE_SCALE = [
@@ -36,7 +37,7 @@ const GradeEntry = () => {
   useEffect(() => {
     const fetchGrade = async () => {
       try {
-        const response = await fetchWithToken(`http://localhost:5001/api/courses/${courseId}/grade`);
+        const response = await fetchWithToken(`${API_BASE_URL}/courses/${courseId}/grade`);
         const data = await response.json();
         if (response.ok && data) {
           setExistingGradeId(data.grade_id || data.id);
@@ -44,7 +45,7 @@ const GradeEntry = () => {
         }
 
         // Also fetch course name to show in header
-        const courseRes = await fetchWithToken(`http://localhost:5001/api/courses/${courseId}`);
+        const courseRes = await fetchWithToken(`${API_BASE_URL}/courses/${courseId}`);
         const courseData = await courseRes.json();
         if (courseRes.ok && courseData) {
           setCourseName(courseData.course_name || courseData.name || 'Course');
@@ -68,7 +69,7 @@ const GradeEntry = () => {
 
     try {
       if (existingGradeId) {
-        const response = await fetchWithToken(`http://localhost:5001/api/grades/${existingGradeId}`, {
+        const response = await fetchWithToken(`${API_BASE_URL}/grades/${existingGradeId}`, {
           method: 'PUT',
           body: JSON.stringify({ letter_grade: grade })
         });
@@ -79,7 +80,7 @@ const GradeEntry = () => {
           setError('Failed to update grade.');
         }
       } else {
-        const response = await fetchWithToken(`http://localhost:5001/api/courses/${courseId}/grade`, {
+        const response = await fetchWithToken(`${API_BASE_URL}/courses/${courseId}/grade`, {
           method: 'POST',
           body: JSON.stringify({ letter_grade: grade })
         });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 const Profile = () => {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -15,7 +16,7 @@ const Profile = () => {
 
     const fetchProfile = async () => {
       try {
-        const response = await fetchWithToken(`http://localhost:5001/api/students/${studentId}`);
+        const response = await fetchWithToken(`${API_BASE_URL}/students/${studentId}`);
         const data = await response.json();
         if (response.ok) {
           setName(data.full_name || data.name || '');
@@ -37,7 +38,7 @@ const Profile = () => {
 
     try {
       const id = user.id || user._id;
-      const response = await fetchWithToken(`http://localhost:5001/api/students/${id}`, {
+      const response = await fetchWithToken(`${API_BASE_URL}/students/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ full_name: name, email })
       });

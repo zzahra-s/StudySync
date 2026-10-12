@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require('../config/database');
+const { sql, poolPromise } = require('../db');
 
 class Semester {
     static async create(semesterData) {
@@ -11,8 +11,8 @@ class Semester {
             .input('end_date', sql.Date, end_date)
             .query(`
                 INSERT INTO Semesters (student_id, semester_name, start_date, end_date)
-                OUTPUT INSERTED.semester_id
                 VALUES (@student_id, @semester_name, @start_date, @end_date)
+                RETURNING semester_id
             `);
         return result.recordset[0].semester_id;
     }

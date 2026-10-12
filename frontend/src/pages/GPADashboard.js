@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 const GPADashboard = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -15,7 +16,7 @@ const GPADashboard = () => {
       setLoading(true);
       setError('');
       try {
-        const cgpaRes = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/cgpa`);
+        const cgpaRes = await fetchWithToken(`${API_BASE_URL}/students/${studentId}/cgpa`);
         const cgpaJson = await cgpaRes.json();
         if (cgpaRes.ok) {
           setCgpaData(cgpaJson);
@@ -23,7 +24,7 @@ const GPADashboard = () => {
           setError(cgpaJson.message || 'Failed to load CGPA.');
         }
 
-        const semRes = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/semester-gpa`);
+        const semRes = await fetchWithToken(`${API_BASE_URL}/students/${studentId}/semester-gpa`);
         const semJson = await semRes.json();
         if (semRes.ok) {
           setSemesterGPAs(semJson.semesters || []);

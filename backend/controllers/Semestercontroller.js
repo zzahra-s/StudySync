@@ -42,7 +42,7 @@ const createSemester = async (req, res) => {
     } catch (error) {
         console.error('Create semester error:', error);
         // Unique constraint,(student_id, semester_name)
-        if (error.number === 2627 || error.number === 2601) {
+        if (error.code === '23505') {
             return res.status(400).json({ message: 'Semester name already exists for this student' });
         }
         res.status(500).json({ message: 'Server error' });

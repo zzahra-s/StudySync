@@ -11,15 +11,16 @@ const getWeightagesByCourse = async (req, res) => {
     const result = await pool.request()
       .input('courseId', courseId)
       .query(`
-        SELECT TOP 1
+        SELECT
           id,
-          course_id AS courseId,
-          quizzes_percentage AS quizzesPercentage,
-          assignments_percentage AS assignmentsPercentage,
-          midterm_percentage AS midtermPercentage,
-          final_percentage AS finalPercentage
+          course_id AS "courseId",
+          quizzes_percentage AS "quizzesPercentage",
+          assignments_percentage AS "assignmentsPercentage",
+          midterm_percentage AS "midtermPercentage",
+          final_percentage AS "finalPercentage"
         FROM CourseMaterialWeightage
         WHERE course_id = @courseId
+        LIMIT 1
       `);
 
     if (!result.recordset.length) {
@@ -73,7 +74,7 @@ const updateWeightagesByCourse = async (req, res) => {
           assignments_percentage = @assignmentsPercentage,
           midterm_percentage = @midtermPercentage,
           final_percentage = @finalPercentage,
-          updated_at = GETDATE()
+          updated_at = timezone('utc', now())
         WHERE course_id = @courseId
       `);
 

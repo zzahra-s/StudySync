@@ -93,12 +93,14 @@ cd backend
 npm install
 ```
 
-Create a `.env` file and add:
+Create the database first: in the Supabase SQL Editor run `backend/database/supabase/schema.sql`, then (optionally) `backend/database/supabase/seed.sql` for demo data.
+
+Copy `backend/.env.example` to `backend/.env` and fill in:
 
 ```env
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_key
-PORT=5000
+DATABASE_URL=your_supabase_transaction_pooler_connection_string
+JWT_SECRET=a_long_random_string
+PORT=5001
 ```
 
 Start backend:
@@ -129,7 +131,7 @@ Application will run on:
 
 ```text
 Frontend: http://localhost:3000
-Backend: http://localhost:5000
+Backend: http://localhost:5001
 ```
 
 ---

@@ -16,12 +16,12 @@ const getTasksByCourse = async (req, res) => {
       .query(`
         SELECT
           id,
-          user_id AS userId,
-          course_id AS courseId,
+          user_id AS "userId",
+          course_id AS "courseId",
           title,
           status,
-          linked_deadline_id AS linkedDeadlineId,
-          created_at AS createdAt
+          linked_deadline_id AS "linkedDeadlineId",
+          created_at AS "createdAt"
         FROM TaskManager
         WHERE user_id = @studentId AND course_id = @courseId
         ORDER BY created_at DESC, id DESC
@@ -55,8 +55,8 @@ const addTask = async (req, res) => {
       .input('status', normalizedStatus)
       .query(`
         INSERT INTO TaskManager (user_id, course_id, title, status)
-        OUTPUT INSERTED.id
         VALUES (@userId, @courseId, @title, @status)
+        RETURNING id
       `);
 
     return res.status(201).json({

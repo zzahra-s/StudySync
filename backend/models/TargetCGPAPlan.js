@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require('../config/database');
+const { sql, poolPromise } = require('../db');
 
 // ─────────────────────────────────────────────────────────────────
 // Pure calculation utility (no I/O)
@@ -112,7 +112,7 @@ class TargetCGPAPlanModel {
             is_achievable        = @is_achievable,
             required_sgpa        = @required_sgpa,
             max_possible_cgpa    = @max_possible_cgpa,
-            updated_at           = GETDATE()
+            updated_at           = timezone('utc', now())
           WHERE plan_id = @plan_id
         `);
     } else {
@@ -133,11 +133,11 @@ class TargetCGPAPlanModel {
             (student_id, current_cgpa, target_cgpa, remaining_credits, remaining_semesters,
              total_degree_credits, distribution_method, is_achievable, required_sgpa,
              max_possible_cgpa, created_at, updated_at)
-          OUTPUT INSERTED.plan_id
           VALUES
             (@student_id, @current_cgpa, @target_cgpa, @remaining_credits, @remaining_semesters,
              @total_degree_credits, @distribution_method, @is_achievable, @required_sgpa,
-             @max_possible_cgpa, GETDATE(), GETDATE())
+             @max_possible_cgpa, timezone('utc', now()), timezone('utc', now()))
+          RETURNING plan_id
         `);
       planId = ins.recordset[0].plan_id;
     }
@@ -172,9 +172,10 @@ class TargetCGPAPlanModel {
     const planResult = await pool.request()
       .input('student_id', sql.Int, studentId)
       .query(`
-        SELECT TOP 1 * FROM TargetCGPAPlan
+        SELECT * FROM TargetCGPAPlan
         WHERE student_id = @student_id
         ORDER BY updated_at DESC
+        LIMIT 1
       `);
 
     if (planResult.recordset.length === 0) return null;

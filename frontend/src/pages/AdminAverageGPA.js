@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 const AdminAverageGPA = () => {
   const [avgData, setAvgData] = useState(null);
@@ -10,7 +11,7 @@ const AdminAverageGPA = () => {
   useEffect(() => {
     const fetchAvg = async () => {
       try {
-        const res = await fetchWithToken('http://localhost:5001/api/admin/average-gpa');
+        const res = await fetchWithToken(`${API_BASE_URL}/admin/average-gpa`);
         const data = await res.json();
         if (res.ok) {
           setAvgData(data);

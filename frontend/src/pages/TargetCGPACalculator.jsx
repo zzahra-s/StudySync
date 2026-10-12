@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
-const API = 'http://localhost:5001/api';
+const API = API_BASE_URL;
 
 // ─────────────────────────────────────────────────────────────────
 // Pure corrected calculation (mirrors backend logic exactly)

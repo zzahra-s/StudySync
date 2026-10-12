@@ -29,7 +29,7 @@ const register = async (req, res) => {
     } catch (error) {
         console.error('Register error:', error);
         // Handle unique constraint violation (duplicate roll_number or email)
-        if (error.number === 2627 || error.number === 2601) {
+        if (error.code === '23505') {
             return res.status(400).json({ message: 'Email or roll number already exists' });
         }
         res.status(500).json({ message: 'Server error' });

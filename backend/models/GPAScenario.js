@@ -1,5 +1,5 @@
 
-const { sql, poolPromise } = require('../config/database');
+const { sql, poolPromise } = require('../db');
 
 class GPAScenario {
 //list scenarios
@@ -35,8 +35,8 @@ class GPAScenario {
             .input('scenario_name', sql.VarChar(100), scenario_name)
             .query(`
                 INSERT INTO GPAScenarios (student_id, scenario_name)
-                OUTPUT INSERTED.scenario_id
                 VALUES (@student_id, @scenario_name)
+                RETURNING scenario_id
             `);
         return result.recordset[0].scenario_id;
     }
@@ -86,6 +86,7 @@ class GPAScenario {
 
 //add course
     static async addCourse(scenario_id, course_id, expected_grade) {
+        expected_grade = String(expected_grade).toUpperCase().trim();
         const pool = await poolPromise;
         // Upsert: if course already in scenario, update grade
         const existing = await pool.request()

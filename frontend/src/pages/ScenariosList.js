@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 const ScenariosList = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -17,7 +18,7 @@ const ScenariosList = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/scenarios`);
+      const res = await fetchWithToken(`${API_BASE_URL}/students/${studentId}/scenarios`);
       const data = await res.json();
       if (res.ok) {
         setScenarios(data);
@@ -39,7 +40,7 @@ const ScenariosList = () => {
     e.preventDefault();
     setError('');
     try {
-      const res = await fetchWithToken('http://localhost:5001/api/scenarios', {
+      const res = await fetchWithToken(`${API_BASE_URL}/scenarios`, {
         method: 'POST',
         body: JSON.stringify({ student_id: studentId, scenario_name: newName }),
       });
@@ -60,7 +61,7 @@ const ScenariosList = () => {
     setError('');
     try {
       const res = await fetchWithToken(
-        `http://localhost:5001/api/scenarios/${deleteTarget.scenario_id}`,
+        `${API_BASE_URL}/scenarios/${deleteTarget.scenario_id}`,
         { method: 'DELETE' }
       );
       if (res.ok) {

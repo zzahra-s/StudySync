@@ -11,8 +11,9 @@ router.get('/students/:studentId/task-progress', async (req, res) => {
     request.input('studentId', parseInt(studentId));
 
     const result = await request.query(`
-      SELECT progress_id as id, total_tasks as totalTasks, completed_tasks as completedTasks,
-             percentage, updated_at as updatedAt
+      SELECT progress_id as id, total_tasks as "totalTasks", completed_tasks as "completedTasks",
+             CASE WHEN total_tasks > 0 THEN ROUND(completed_tasks * 100.0 / total_tasks) ELSE 0 END AS percentage,
+             updated_at as "updatedAt"
       FROM TaskProgress
       WHERE student_id = @studentId
     `);
@@ -42,7 +43,6 @@ router.post('/students/:studentId/task-progress', async (req, res) => {
     request.input('studentId', parseInt(studentId));
     request.input('totalTasks', total_tasks);
     request.input('completedTasks', completed_tasks);
-    request.input('percentage', total_tasks > 0 ? Math.round((completed_tasks / total_tasks) * 100) : 0);
 
     // Check if record exists
     const checkResult = await pool.request()
@@ -53,15 +53,15 @@ router.post('/students/:studentId/task-progress', async (req, res) => {
       // Update
       await request.query(`
         UPDATE TaskProgress
-        SET total_tasks = @totalTasks, completed_tasks = @completedTasks, percentage = @percentage,
-            updated_at = GETDATE()
+        SET total_tasks = @totalTasks, completed_tasks = @completedTasks,
+            updated_at = timezone('utc', now())
         WHERE student_id = @studentId
       `);
     } else {
       // Insert
       await request.query(`
-        INSERT INTO TaskProgress (student_id, total_tasks, completed_tasks, percentage)
-        VALUES (@studentId, @totalTasks, @completedTasks, @percentage)
+        INSERT INTO TaskProgress (student_id, total_tasks, completed_tasks)
+        VALUES (@studentId, @totalTasks, @completedTasks)
       `);
     }
 
