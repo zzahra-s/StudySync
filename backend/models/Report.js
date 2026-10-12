@@ -1,5 +1,5 @@
 
-const { sql, poolPromise } = require('../config/database');
+const { sql, poolPromise } = require('../db');
 
 class Report {
     // All grades a student has ever receiveed
@@ -40,7 +40,7 @@ class Report {
                     s.start_date,
                     s.end_date,
                     COUNT(c.course_id) AS course_count,
-                    ISNULL(SUM(c.credit_hours), 0) AS total_credit_hours
+                    COALESCE(SUM(c.credit_hours), 0) AS total_credit_hours
                 FROM Semesters s
                 LEFT JOIN Courses c ON s.semester_id = c.semester_id
                 WHERE s.student_id = @student_id

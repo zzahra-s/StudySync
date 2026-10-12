@@ -42,7 +42,7 @@ const updateProfile = async (req, res) => {
         res.json({ message: 'Profile updated successfully' });
     } catch (error) {
         console.error('Update profile error:', error);
-        if (error.number === 2627 || error.number === 2601) {
+        if (error.code === '23505') {
             return res.status(400).json({ message: 'Email already in use' });
         }
         res.status(500).json({ message: 'Server error' });

@@ -11,9 +11,9 @@ router.get('/students/:studentId/materials', async (req, res) => {
     request.input('studentId', parseInt(studentId));
 
     const result = await request.query(`
-      SELECT m.material_id as id, m.file_name as fileName, m.description,
-             m.upload_date as uploadDate, m.url, c.course_name as course,
-             c.course_code as courseCode
+      SELECT m.material_id as id, m.file_name as "fileName", m.description,
+             m.upload_date as "uploadDate", m.url, c.course_name as course,
+             c.course_code as "courseCode"
       FROM Materials m
       LEFT JOIN Courses c ON m.course_id = c.course_id
       WHERE m.student_id = @studentId
@@ -36,7 +36,7 @@ router.get('/courses/:courseId/materials', async (req, res) => {
     request.input('courseId', parseInt(courseId));
 
     const result = await request.query(`
-      SELECT material_id as id, file_name as fileName, description, upload_date as uploadDate, url
+      SELECT material_id as id, file_name as "fileName", description, upload_date as "uploadDate", url
       FROM Materials
       WHERE course_id = @courseId
       ORDER BY upload_date DESC
@@ -64,8 +64,8 @@ router.post('/materials', async (req, res) => {
 
     const result = await request.query(`
       INSERT INTO Materials (student_id, course_id, file_name, description, url)
-      OUTPUT INSERTED.material_id
       VALUES (@student_id, @course_id, @file_name, @description, @url)
+      RETURNING material_id
     `);
 
     res.json({

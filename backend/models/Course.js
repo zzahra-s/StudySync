@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require('../config/database');
+const { sql, poolPromise } = require('../db');
 
 class Course {
     static async create(courseData) {
@@ -12,8 +12,8 @@ class Course {
             .input('instructor_name', sql.VarChar(100), instructor_name || null)
             .query(`
                 INSERT INTO Courses (semester_id, course_code, course_name, credit_hours, instructor_name)
-                OUTPUT INSERTED.course_id
                 VALUES (@semester_id, @course_code, @course_name, @credit_hours, @instructor_name)
+                RETURNING course_id
             `);
         return result.recordset[0].course_id;
     }

@@ -12,7 +12,7 @@ router.get('/students/:studentId/books', async (req, res) => {
 
     const result = await request.query(`
       SELECT b.book_id as id, b.title, b.author, b.isbn, c.course_name as course,
-             c.course_code as courseCode
+             c.course_code as "courseCode"
       FROM Books b
       JOIN Courses c ON b.course_id = c.course_id
       JOIN Semesters s ON c.semester_id = s.semester_id
@@ -63,8 +63,8 @@ router.post('/books', async (req, res) => {
 
     const result = await request.query(`
       INSERT INTO Books (course_id, title, author, isbn)
-      OUTPUT INSERTED.book_id
       VALUES (@course_id, @title, @author, @isbn)
+      RETURNING book_id
     `);
 
     res.json({
@@ -150,7 +150,7 @@ router.get('/books/search', async (req, res) => {
     const result = await request.query(`
       SELECT id, title, author, isbn
       FROM Books
-      WHERE title LIKE @query OR author LIKE @query
+      WHERE title ILIKE @query OR author ILIKE @query
     `);
 
     res.json(result.recordset || []);

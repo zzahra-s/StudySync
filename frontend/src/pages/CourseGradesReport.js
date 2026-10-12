@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 const CourseGradesReport = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -14,7 +15,7 @@ const CourseGradesReport = () => {
   useEffect(() => {
     const fetchGrades = async () => {
       try {
-        const res = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/course-grades`);
+        const res = await fetchWithToken(`${API_BASE_URL}/students/${studentId}/course-grades`);
         const data = await res.json();
         if (res.ok) {
           setGrades(data);

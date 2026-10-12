@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 const Semesters = () => {
   const studentId = localStorage.getItem('studentId') || localStorage.getItem('userId');
@@ -14,7 +15,7 @@ const Semesters = () => {
   const fetchSemesters = async () => {
     if (!studentId) return;
     try {
-      const response = await fetchWithToken(`http://localhost:5001/api/students/${studentId}/semesters`);
+      const response = await fetchWithToken(`${API_BASE_URL}/students/${studentId}/semesters`);
       const data = await response.json();
       if (response.ok) {
         setSemesters(data);
@@ -36,7 +37,7 @@ const Semesters = () => {
 
     try {
       if (editId) {
-        const response = await fetchWithToken(`http://localhost:5001/api/semesters/${editId}`, {
+        const response = await fetchWithToken(`${API_BASE_URL}/semesters/${editId}`, {
           method: 'PUT',
           body: JSON.stringify({ semester_name: `${name} ${year}` })
         });
@@ -46,7 +47,7 @@ const Semesters = () => {
           setError('Failed to update semester.');
         }
       } else {
-        const response = await fetchWithToken('http://localhost:5001/api/semesters', {
+        const response = await fetchWithToken(`${API_BASE_URL}/semesters`, {
           method: 'POST',
           body: JSON.stringify({
             student_id: Number(studentId),
@@ -70,7 +71,7 @@ const Semesters = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this semester?')) {
       try {
-        const response = await fetchWithToken(`http://localhost:5001/api/semesters/${id}`, { method: 'DELETE' });
+        const response = await fetchWithToken(`${API_BASE_URL}/semesters/${id}`, { method: 'DELETE' });
         if (response.ok) {
           fetchSemesters();
         } else {

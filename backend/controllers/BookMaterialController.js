@@ -12,13 +12,13 @@ const getBooksByCourse = async (req, res) => {
       .input('courseId', courseId)
       .query(`
         SELECT
-          id,
-          course_id AS courseId,
+          book_id AS id,
+          course_id AS "courseId",
           title,
           author,
           description,
-          pdf_link AS pdfLink
-        FROM BookMaterial
+          pdf_link AS "pdfLink"
+        FROM Books
         WHERE course_id = @courseId
         ORDER BY title ASC
       `);

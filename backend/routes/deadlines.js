@@ -9,9 +9,9 @@ router.get('/students/:studentId/deadlines', async (req, res) => {
   try {
     const pool = await getConnectionPool();
     let query = `
-      SELECT d.deadline_id as id, d.title, d.description, d.due_date as dueDate, d.status, d.priority,
-             d.allocated_study_hours as allocatedStudyHours, d.course_id as courseId, c.course_name as course,
-             c.course_code as courseCode
+      SELECT d.deadline_id as id, d.title, d.description, d.due_date as "dueDate", d.status, d.priority,
+             d.allocated_study_hours as "allocatedStudyHours", d.course_id as "courseId", c.course_name as course,
+             c.course_code as "courseCode"
       FROM Deadlines d
       JOIN Courses c ON d.course_id = c.course_id
       JOIN Semesters s ON c.semester_id = s.semester_id
@@ -73,8 +73,8 @@ router.post('/deadlines', async (req, res) => {
 
     const result = await request.query(`
       INSERT INTO Deadlines (title, description, due_date, status, course_id, priority, allocated_study_hours)
-      OUTPUT INSERTED.deadline_id
       VALUES (@title, @description, @due_date, @status, @course_id, @priority, @allocated_study_hours)
+      RETURNING deadline_id
     `);
 
     // Optional sync: new deadlines can appear in task manager todo list.
@@ -83,19 +83,16 @@ router.post('/deadlines', async (req, res) => {
       .input('courseId', course_id)
       .input('linkedDeadlineId', result.recordset[0].deadline_id)
       .query(`
-        IF OBJECT_ID('TaskManager', 'U') IS NOT NULL
-        BEGIN
-          INSERT INTO TaskManager (user_id, course_id, title, status, linked_deadline_id)
-          SELECT
-            s.student_id,
-            @courseId,
-            @title,
-            'todo',
-            @linkedDeadlineId
-          FROM Courses c
-          INNER JOIN Semesters s ON s.semester_id = c.semester_id
-          WHERE c.course_id = @courseId
-        END
+        INSERT INTO TaskManager (user_id, course_id, title, status, linked_deadline_id)
+        SELECT
+          s.student_id,
+          c.course_id,
+          @title,
+          'todo',
+          @linkedDeadlineId::int
+        FROM Courses c
+        INNER JOIN Semesters s ON s.semester_id = c.semester_id
+        WHERE c.course_id = @courseId::int
       `);
 
     res.json({
@@ -162,12 +159,9 @@ router.delete('/deadlines/:id', async (req, res) => {
     await pool.request()
       .input('id', deadlineId)
       .query(`
-        IF OBJECT_ID('TaskManager', 'U') IS NOT NULL
-        BEGIN
-          UPDATE TaskManager
-          SET linked_deadline_id = NULL
-          WHERE linked_deadline_id = @id
-        END
+        UPDATE TaskManager
+        SET linked_deadline_id = NULL
+        WHERE linked_deadline_id = @id
       `);
 
     const result = await pool.request()

@@ -16,8 +16,8 @@ router.get('/students/:studentId/course-options', async (req, res) => {
       .query(`
         SELECT
           c.course_id AS id,
-          c.course_name AS courseName,
-          c.course_code AS courseCode
+          c.course_name AS "courseName",
+          c.course_code AS "courseCode"
         FROM Courses c
         INNER JOIN Semesters s ON s.semester_id = c.semester_id
         WHERE s.student_id = @studentId

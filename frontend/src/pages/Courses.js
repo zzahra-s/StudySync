@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchWithToken } from '../utils/fetchWithToken';
+import { API_BASE_URL } from '../config';
 
 const Courses = () => {
   const { semesterId } = useParams();
@@ -13,7 +14,7 @@ const Courses = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetchWithToken(`http://localhost:5001/api/semesters/${semesterId}/courses`);
+      const response = await fetchWithToken(`${API_BASE_URL}/semesters/${semesterId}/courses`);
       const data = await response.json();
       if (response.ok) {
         setCourses(data);
@@ -45,7 +46,7 @@ const Courses = () => {
 
     try {
       if (editId) {
-        const response = await fetchWithToken(`http://localhost:5001/api/courses/${editId}`, {
+        const response = await fetchWithToken(`${API_BASE_URL}/courses/${editId}`, {
           method: 'PUT',
           body: JSON.stringify({
             course_name: name,
@@ -59,7 +60,7 @@ const Courses = () => {
           setError('Failed to update course.');
         }
       } else {
-        const response = await fetchWithToken('http://localhost:5001/api/courses', {
+        const response = await fetchWithToken(`${API_BASE_URL}/courses`, {
           method: 'POST',
           body: JSON.stringify({
             semester_id: Number(semesterId),
@@ -83,7 +84,7 @@ const Courses = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this course?')) {
       try {
-        const response = await fetchWithToken(`http://localhost:5001/api/courses/${id}`, { method: 'DELETE' });
+        const response = await fetchWithToken(`${API_BASE_URL}/courses/${id}`, { method: 'DELETE' });
         if (response.ok) {
           fetchCourses();
         } else {

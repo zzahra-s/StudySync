@@ -1,6 +1,6 @@
 
 
-const { sql, poolPromise } = require('../config/database');
+const { sql, poolPromise } = require('../db');
 
 class GPA {
     static async getCGPA(student_id) {

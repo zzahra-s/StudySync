@@ -141,7 +141,7 @@ const addCourseToScenario = async (req, res) => {
     } catch (error) {
         console.error('Add course to scenario error:', error);
         //fk violation,invalid grade or course_id
-        if (error.number === 547) {
+        if (error.code === '23503') {
             return res.status(400).json({
                 message: 'Invalid expected_grade or course_id. Grade must be one of: A+, A, A-, B+, B, B-, C+, C, C-, D+, D, F',
             });
